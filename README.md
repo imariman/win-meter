@@ -4,6 +4,12 @@ CPU, memory, disk, and network in the Windows notification area. Left-click open
 
 No administrator rights. This version does not read temperatures. Readings stay on the machine.
 
+## Download
+
+[Download WinMeter.exe](https://github.com/imariman/win-meter/releases/latest/download/WinMeter.exe) for 64-bit Windows. It includes the runtime, so .NET does not need to be installed.
+
+Windows SmartScreen can block an unsigned download. Choose **More info**, then **Run anyway**.
+
 ## Run
 
 The .NET 10 SDK is installed for the current user. `dotnet` on PATH is still 6, so start the project with:
