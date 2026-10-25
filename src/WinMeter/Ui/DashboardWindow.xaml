@@ -67,7 +67,7 @@
             <Grid Margin="2,0,0,12">
                 <StackPanel>
                     <TextBlock Text="WinMeter" FontSize="16" FontWeight="SemiBold" Foreground="#F4F6FB"/>
-                    <TextBlock Text="Son 60 saniye" FontSize="12" Foreground="#8B93A7" Margin="0,2,0,0"/>
+                    <TextBlock Text="Last 60 seconds" FontSize="12" Foreground="#8B93A7" Margin="0,2,0,0"/>
                 </StackPanel>
                 <Button Content="&#x2715;" Style="{StaticResource CloseButton}" HorizontalAlignment="Right" VerticalAlignment="Top" Click="CloseButton_Click"/>
             </Grid>
@@ -75,7 +75,7 @@
             <Border Style="{StaticResource Card}">
                 <StackPanel>
                     <Grid>
-                        <TextBlock Text="İşlemci" Style="{StaticResource Title}"/>
+                        <TextBlock Text="CPU" Style="{StaticResource Title}"/>
                         <TextBlock Text="{Binding CpuValue}" Style="{StaticResource Value}"/>
                     </Grid>
                     <ui:SparklineControl Height="42" Margin="0,8,0,0" Stroke="#7EB6FF" RangeMax="100" Values="{Binding CpuSeries}"/>
@@ -86,7 +86,7 @@
             <Border Style="{StaticResource Card}">
                 <StackPanel>
                     <Grid>
-                        <TextBlock Text="Bellek" Style="{StaticResource Title}"/>
+                        <TextBlock Text="Memory" Style="{StaticResource Title}"/>
                         <TextBlock Text="{Binding RamValue}" Style="{StaticResource Value}"/>
                     </Grid>
                     <ui:SparklineControl Height="42" Margin="0,8,0,0" Stroke="#3DDC97" RangeMax="100" Values="{Binding RamSeries}"/>
@@ -108,7 +108,7 @@
             <Border Style="{StaticResource Card}" Margin="0">
                 <StackPanel>
                     <Grid>
-                        <TextBlock Text="Ağ · indirme" Style="{StaticResource Title}"/>
+                        <TextBlock Text="Network · download" Style="{StaticResource Title}"/>
                         <TextBlock Text="{Binding NetValue}" Style="{StaticResource Value}"/>
                     </Grid>
                     <ui:SparklineControl Height="42" Margin="0,8,0,0" Stroke="#C084FC" Values="{Binding NetSeries}"/>

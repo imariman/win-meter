@@ -1,28 +1,28 @@
 # WinMeter
 
-Windows bildirim alanında CPU, bellek, disk ve ağ. Sol tık paneli açar. Sağ tık menüsünden Windows ile birlikte başlatılır veya uygulamadan çıkılır.
+CPU, memory, disk, and network in the Windows notification area. Left-click opens the panel. The right-click menu starts WinMeter with Windows or quits.
 
-Yönetici izni gerekmez. Sıcaklık bu sürümde yok. Ölçümler makinede kalır.
+No administrator rights. This version does not read temperatures. Readings stay on the machine.
 
-## Çalıştırma
+## Run
 
-Bu bilgisayarda .NET 10 SDK kullanıcı klasörüne kurulu. Sistemdeki `dotnet` hâlâ 6 olduğu için projeyi şu komutla aç:
+The .NET 10 SDK is installed for the current user. `dotnet` on PATH is still 6, so start the project with:
 
 ```powershell
 .\run.ps1
 ```
 
-Tek ölçüm:
+Print one sample:
 
 ```powershell
 .\run.ps1 -- --once
 ```
 
-Çift tıklanan sürüm:
+Build a double-clickable copy:
 
 ```powershell
 & "$env:LOCALAPPDATA\Microsoft\dotnet\dotnet.exe" publish src\WinMeter\WinMeter.csproj -c Release -r win-x64 --self-contained true -o artifacts\win-meter
 .\artifacts\win-meter\WinMeter.exe
 ```
 
-Simgeler gizliyse görev çubuğundaki oka tıklayıp CPU, RAM, DSK ve NET simgelerini dışarı sürükle.
+If the icons are hidden, open the taskbar overflow arrow and drag CPU, RAM, DSK, and NET onto the bar.

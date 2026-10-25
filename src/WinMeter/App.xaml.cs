@@ -94,7 +94,7 @@ public partial class App : Application
 
         if (sample == null || sample.RamTotalBytes <= 0)
         {
-            WriteLine("winmeter: ölçüm alınamadı");
+            WriteLine("winmeter: no reading");
             return 1;
         }
 

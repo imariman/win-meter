@@ -27,11 +27,11 @@ internal sealed class TrayController : IDisposable
             MakeSlot()
         };
 
-        var open = new ToolStripMenuItem("Aç");
+        var open = new ToolStripMenuItem("Open");
         open.Click += (_, _) => _dashboard.ShowFromMenu();
-        var startup = new ToolStripMenuItem("Windows açılınca başlat");
+        var startup = new ToolStripMenuItem("Start with Windows");
         startup.Click += (_, _) => AutoStart.Set(!AutoStart.IsEnabled());
-        var exit = new ToolStripMenuItem("Çıkış");
+        var exit = new ToolStripMenuItem("Exit");
         exit.Click += (_, _) => System.Windows.Application.Current?.Shutdown();
         _menu.Items.Add(open);
         _menu.Items.Add(startup);
@@ -108,20 +108,20 @@ internal sealed class TrayController : IDisposable
     {
         if (snapshot == null || !snapshot.HasDelta)
         {
-            Set(_slots[0], "CPU", "…", IconFactory.ColorForPercent(0), "İşlemci ölçülüyor");
-            Set(_slots[1], "RAM", "…", IconFactory.ColorForPercent(0), "Bellek ölçülüyor");
-            Set(_slots[2], "DSK", "…", IconFactory.ColorForPercent(0), "Disk ölçülüyor");
-            Set(_slots[3], "NET", "…", Color.FromArgb(214, 196, 255), "Ağ ölçülüyor");
+            Set(_slots[0], "CPU", "…", IconFactory.ColorForPercent(0), "Measuring CPU");
+            Set(_slots[1], "RAM", "…", IconFactory.ColorForPercent(0), "Measuring memory");
+            Set(_slots[2], "DSK", "…", IconFactory.ColorForPercent(0), "Measuring disk");
+            Set(_slots[3], "NET", "…", Color.FromArgb(214, 196, 255), "Measuring network");
             return;
         }
 
         var cpu = ((int)Math.Round(snapshot.CpuPercent)).ToString(System.Globalization.CultureInfo.InvariantCulture);
         var ram = ((int)Math.Round(snapshot.RamPercent)).ToString(System.Globalization.CultureInfo.InvariantCulture);
         var disk = ((int)Math.Round(snapshot.DiskUsedPercent)).ToString(System.Globalization.CultureInfo.InvariantCulture);
-        Set(_slots[0], "CPU", cpu, IconFactory.ColorForPercent(snapshot.CpuPercent), "İşlemci " + Format.Percent(snapshot.CpuPercent));
-        Set(_slots[1], "RAM", ram, IconFactory.ColorForPercent(snapshot.RamPercent), "Bellek " + Format.Percent(snapshot.RamPercent) + " · " + Format.Bytes(snapshot.RamUsedBytes) + " / " + Format.Bytes(snapshot.RamTotalBytes));
-        Set(_slots[2], "DSK", disk, IconFactory.ColorForPercent(snapshot.DiskUsedPercent), "Disk " + snapshot.DiskName + " " + Format.Percent(snapshot.DiskUsedPercent) + " · okuma " + Format.Rate(snapshot.DiskReadBps) + " · yazma " + Format.Rate(snapshot.DiskWriteBps));
-        Set(_slots[3], "NET", Format.CompactRate(snapshot.NetDownBps), Color.FromArgb(214, 196, 255), "Ağ " + snapshot.NetName + " · indirme " + Format.Rate(snapshot.NetDownBps) + " · yükleme " + Format.Rate(snapshot.NetUpBps));
+        Set(_slots[0], "CPU", cpu, IconFactory.ColorForPercent(snapshot.CpuPercent), "CPU " + Format.Percent(snapshot.CpuPercent));
+        Set(_slots[1], "RAM", ram, IconFactory.ColorForPercent(snapshot.RamPercent), "Memory " + Format.Percent(snapshot.RamPercent) + " · " + Format.Bytes(snapshot.RamUsedBytes) + " / " + Format.Bytes(snapshot.RamTotalBytes));
+        Set(_slots[2], "DSK", disk, IconFactory.ColorForPercent(snapshot.DiskUsedPercent), "Disk " + snapshot.DiskName + " " + Format.Percent(snapshot.DiskUsedPercent) + " · read " + Format.Rate(snapshot.DiskReadBps) + " · write " + Format.Rate(snapshot.DiskWriteBps));
+        Set(_slots[3], "NET", Format.CompactRate(snapshot.NetDownBps), Color.FromArgb(214, 196, 255), "Network " + snapshot.NetName + " · down " + Format.Rate(snapshot.NetDownBps) + " · up " + Format.Rate(snapshot.NetUpBps));
     }
 
     private static void Set(Slot slot, string label, string value, Color color, string tooltip)

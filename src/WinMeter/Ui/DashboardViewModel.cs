@@ -8,16 +8,16 @@ namespace WinMeter.Ui;
 public sealed class DashboardViewModel : INotifyPropertyChanged
 {
     private string _cpuValue = "…";
-    private string _cpuDetail = "ölçülüyor";
+    private string _cpuDetail = "measuring";
     private IReadOnlyList<double> _cpuSeries = Array.Empty<double>();
     private string _ramValue = "…";
-    private string _ramDetail = "ölçülüyor";
+    private string _ramDetail = "measuring";
     private IReadOnlyList<double> _ramSeries = Array.Empty<double>();
     private string _diskValue = "…";
-    private string _diskDetail = "ölçülüyor";
+    private string _diskDetail = "measuring";
     private IReadOnlyList<double> _diskSeries = Array.Empty<double>();
     private string _netValue = "…";
-    private string _netDetail = "ölçülüyor";
+    private string _netDetail = "measuring";
     private IReadOnlyList<double> _netSeries = Array.Empty<double>();
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -50,16 +50,16 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
         }
 
         Set(ref _cpuValue, Format.Percent(latest.CpuPercent), nameof(CpuValue));
-        Set(ref _cpuDetail, latest.LogicalProcessors + " mantıksal işlemci", nameof(CpuDetail));
+        Set(ref _cpuDetail, latest.LogicalProcessors + " logical processors", nameof(CpuDetail));
         Set(ref _cpuSeries, cpu, nameof(CpuSeries));
         Set(ref _ramValue, Format.Percent(latest.RamPercent), nameof(RamValue));
         Set(ref _ramDetail, Format.Bytes(latest.RamUsedBytes) + " / " + Format.Bytes(latest.RamTotalBytes), nameof(RamDetail));
         Set(ref _ramSeries, ram, nameof(RamSeries));
         Set(ref _diskValue, Format.Percent(latest.DiskUsedPercent), nameof(DiskValue));
-        Set(ref _diskDetail, latest.DiskName + " · " + Format.Bytes(latest.DiskFreeBytes) + " boş · okuma " + Format.Rate(latest.DiskReadBps) + " · yazma " + Format.Rate(latest.DiskWriteBps), nameof(DiskDetail));
+        Set(ref _diskDetail, latest.DiskName + " · " + Format.Bytes(latest.DiskFreeBytes) + " free · read " + Format.Rate(latest.DiskReadBps) + " · write " + Format.Rate(latest.DiskWriteBps), nameof(DiskDetail));
         Set(ref _diskSeries, disk, nameof(DiskSeries));
         Set(ref _netValue, Format.Rate(latest.NetDownBps), nameof(NetValue));
-        Set(ref _netDetail, latest.NetName + " · indirme " + Format.Rate(latest.NetDownBps) + " · yükleme " + Format.Rate(latest.NetUpBps), nameof(NetDetail));
+        Set(ref _netDetail, latest.NetName + " · down " + Format.Rate(latest.NetDownBps) + " · up " + Format.Rate(latest.NetUpBps), nameof(NetDetail));
         Set(ref _netSeries, net, nameof(NetSeries));
     }
 

@@ -243,7 +243,7 @@ internal sealed class SystemSampler : IDisposable
             var adapter = SelectAdapter();
             if (adapter == null)
             {
-                return new NetPoint("", "bağlı değil", 0, 0);
+                return new NetPoint("", "not connected", 0, 0);
             }
 
             var stats = adapter.GetIPv4Statistics();
@@ -253,7 +253,7 @@ internal sealed class SystemSampler : IDisposable
         catch (Exception ex)
         {
             Debug.WriteLine(ex);
-            return new NetPoint("", "ağ", 0, 0);
+            return new NetPoint("", "network", 0, 0);
         }
     }
 
