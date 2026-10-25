@@ -14,4 +14,10 @@ public sealed record Snapshot(
     double NetDownBps,
     double NetUpBps,
     string NetName,
-    bool HasDelta);
+    bool HasDelta,
+    double[] CorePercents,
+    long CommitUsedBytes,
+    long CommitLimitBytes,
+    long DiskTotalBytes,
+    bool GpuReady,
+    double GpuPercent);

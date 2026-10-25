@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="clr-namespace:WinMeter.Ui"
         Title="WinMeter"
-        Width="400"
+        Width="440"
         SizeToContent="Height"
         WindowStyle="None"
         ResizeMode="NoResize"
@@ -61,17 +61,121 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <Style x:Key="QuietButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#C5CAD6"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Chrome" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="#22FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <BooleanToVisibilityConverter x:Key="Show"/>
+        <Style x:Key="CoreMeter" TargetType="ProgressBar">
+            <Setter Property="Height" Value="4"/>
+            <Setter Property="Maximum" Value="100"/>
+            <Setter Property="Foreground" Value="#7EB6FF"/>
+            <Setter Property="Background" Value="#22FFFFFF"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ProgressBar">
+                        <Grid x:Name="PART_Track" Height="4">
+                            <Border Background="{TemplateBinding Background}" CornerRadius="2"/>
+                            <Border x:Name="PART_Indicator" HorizontalAlignment="Left" Background="{TemplateBinding Foreground}" CornerRadius="2"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
     <Border Padding="16,14,16,12" Background="#14161C">
         <StackPanel>
             <Grid Margin="2,0,0,12">
                 <StackPanel>
-                    <TextBlock Text="WinMeter" FontSize="16" FontWeight="SemiBold" Foreground="#F4F6FB"/>
-                    <TextBlock Text="Last 60 seconds" FontSize="12" Foreground="#8B93A7" Margin="0,2,0,0"/>
+                    <TextBlock Text="{Binding Heading}" FontSize="16" FontWeight="SemiBold" Foreground="#F4F6FB"/>
+                    <TextBlock Text="{Binding RangeLabel}" FontSize="12" Foreground="#8B93A7" Margin="0,2,0,0"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <Button x:Name="RangeMinuteButton" Content="1 min" Tag="60" Style="{StaticResource QuietButton}" Click="Range_Click" Margin="0,0,4,0"/>
+                        <Button x:Name="RangeTenButton" Content="10 min" Tag="600" Style="{StaticResource QuietButton}" Click="Range_Click" Margin="0,0,4,0"/>
+                        <Button x:Name="RangeHourButton" Content="1 hour" Tag="3600" Style="{StaticResource QuietButton}" Click="Range_Click"/>
+                    </StackPanel>
                 </StackPanel>
                 <Button Content="&#x2715;" Style="{StaticResource CloseButton}" HorizontalAlignment="Right" VerticalAlignment="Top" Click="CloseButton_Click"/>
             </Grid>
 
+            <ScrollViewer MaxHeight="520" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Background="#14161C" Visibility="{Binding ShowingAll, Converter={StaticResource Show}}">
+            <StackPanel>
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="Taskbar" Style="{StaticResource Title}" Margin="0,0,0,8"/>
+                    <WrapPanel>
+                        <CheckBox Content="CPU" Tag="Cpu" IsChecked="{Binding StripCpu, Mode=OneWay}" Foreground="#8EB7FF" FontSize="13" Margin="0,0,16,6" Click="Strip_Click"/>
+                        <CheckBox Content="RAM" Tag="Memory" IsChecked="{Binding StripMemory, Mode=OneWay}" Foreground="#5EE0A8" FontSize="13" Margin="0,0,16,6" Click="Strip_Click"/>
+                        <CheckBox Content="GPU" Tag="Gpu" IsChecked="{Binding StripGpu, Mode=OneWay}" Foreground="#F08CB4" FontSize="13" Margin="0,0,16,6" Click="Strip_Click"/>
+                        <CheckBox Content="SSD" Tag="Disk" IsChecked="{Binding StripDisk, Mode=OneWay}" Foreground="#F5B042" FontSize="13" Margin="0,0,16,6" Click="Strip_Click"/>
+                        <CheckBox Content="NET" Tag="Network" IsChecked="{Binding StripNetwork, Mode=OneWay}" Foreground="#C9A0FF" FontSize="13" Margin="0,0,0,6" Click="Strip_Click"/>
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="Home" Style="{StaticResource Title}" Margin="0,0,0,8"/>
+                    <Grid Margin="0,3">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="88"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Model" Foreground="#8B93A7" FontSize="13"/>
+                        <TextBlock Grid.Column="1" Text="{Binding PcModel}" Foreground="#F4F6FB" FontSize="13" TextWrapping="Wrap" TextAlignment="Right"/>
+                    </Grid>
+                    <Grid Margin="0,3">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="88"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Processor" Foreground="#8B93A7" FontSize="13"/>
+                        <TextBlock Grid.Column="1" Text="{Binding PcProcessor}" Foreground="#F4F6FB" FontSize="13" TextWrapping="Wrap" TextAlignment="Right"/>
+                    </Grid>
+                    <Grid Margin="0,3">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="88"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Memory" Foreground="#8B93A7" FontSize="13"/>
+                        <TextBlock Grid.Column="1" Text="{Binding PcMemory}" Foreground="#F4F6FB" FontSize="13" TextWrapping="Wrap" TextAlignment="Right"/>
+                    </Grid>
+                    <Grid Margin="0,3">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="88"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Graphics" Foreground="#8B93A7" FontSize="13"/>
+                        <TextBlock Grid.Column="1" Text="{Binding PcGraphics}" Foreground="#F4F6FB" FontSize="13" TextWrapping="Wrap" TextAlignment="Right"/>
+                    </Grid>
+                    <Grid Margin="0,3">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="88"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="System" Foreground="#8B93A7" FontSize="13"/>
+                        <TextBlock Grid.Column="1" Text="{Binding PcWindows}" Foreground="#F4F6FB" FontSize="13" TextWrapping="Wrap" TextAlignment="Right"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
             <Border Style="{StaticResource Card}">
                 <StackPanel>
                     <Grid>
@@ -97,6 +201,17 @@
             <Border Style="{StaticResource Card}">
                 <StackPanel>
                     <Grid>
+                        <TextBlock Text="GPU" Style="{StaticResource Title}"/>
+                        <TextBlock Text="{Binding GpuValue}" Style="{StaticResource Value}"/>
+                    </Grid>
+                    <ui:SparklineControl Height="42" Margin="0,8,0,0" Stroke="#F08CB4" RangeMax="100" Values="{Binding GpuSeries}"/>
+                    <TextBlock Text="{Binding GpuDetail}" Style="{StaticResource Detail}"/>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <Grid>
                         <TextBlock Text="Disk" Style="{StaticResource Title}"/>
                         <TextBlock Text="{Binding DiskValue}" Style="{StaticResource Value}"/>
                     </Grid>
@@ -115,6 +230,49 @@
                     <TextBlock Text="{Binding NetDetail}" Style="{StaticResource Detail}"/>
                 </StackPanel>
             </Border>
+            </StackPanel>
+            </ScrollViewer>
+            <Grid Margin="2,8,0,0" Visibility="{Binding ShowingAll, Converter={StaticResource Show}}">
+                <CheckBox x:Name="StartupBox" Content="Start with Windows" Foreground="#C5CAD6" FontSize="12" VerticalAlignment="Center" Click="Startup_Click"/>
+                <Button Content="Exit" Style="{StaticResource QuietButton}" HorizontalAlignment="Right" Click="Exit_Click"/>
+            </Grid>
+
+            <ScrollViewer MaxHeight="560" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Background="#14161C" Visibility="{Binding ShowingOne, Converter={StaticResource Show}}">
+            <StackPanel>
+                <TextBlock Text="{Binding FocusValue}" FontSize="32" FontWeight="SemiBold" Foreground="#F4F6FB"/>
+                <ui:SparklineControl Height="88" Margin="0,12,0,0" Stroke="{Binding FocusStroke}" RangeMax="{Binding FocusRangeMax}" Values="{Binding FocusSeries}"/>
+                <TextBlock Text="{Binding ChartCaption}" FontSize="12" Foreground="#8B93A7" Margin="0,6,0,0" Visibility="{Binding ShowingCaption, Converter={StaticResource Show}}"/>
+                <ItemsControl ItemsSource="{Binding Rows}" Margin="0,12,0,0">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,4">
+                                <TextBlock Text="{Binding Label}" Foreground="#8B93A7" FontSize="13"/>
+                                <TextBlock Text="{Binding Value}" Foreground="#F4F6FB" FontSize="13" HorizontalAlignment="Right"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <StackPanel Margin="0,14,0,0" Visibility="{Binding ShowingCores, Converter={StaticResource Show}}">
+                    <TextBlock Text="Cores" FontSize="12" Foreground="#A7AEC0" Margin="0,0,0,8"/>
+                    <ItemsControl ItemsSource="{Binding Cores}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Width="48" Margin="0,0,6,8">
+                                    <TextBlock Text="{Binding Label}" Foreground="#8B93A7" FontSize="11"/>
+                                    <ProgressBar Value="{Binding Percent, Mode=OneWay}" Style="{StaticResource CoreMeter}" Margin="0,3,0,2"/>
+                                    <TextBlock Text="{Binding Text}" Foreground="#F4F6FB" FontSize="11"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </StackPanel>
+            </ScrollViewer>
         </StackPanel>
     </Border>
 </Window>

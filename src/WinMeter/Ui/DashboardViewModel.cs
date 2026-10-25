@@ -1,12 +1,58 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Windows.Media;
 using WinMeter.Metrics;
 
 namespace WinMeter.Ui;
 
+public enum MeterKind
+{
+    Cpu,
+    Memory,
+    Disk,
+    Network,
+    Gpu
+}
+
+public sealed class StatRow
+{
+    public StatRow(string label, string value)
+    {
+        Label = label;
+        Value = value;
+    }
+
+    public string Label { get; }
+
+    public string Value { get; }
+}
+
+public sealed class CoreLoad
+{
+    public CoreLoad(string label, double percent, string text)
+    {
+        Label = label;
+        Percent = percent;
+        Text = text;
+    }
+
+    public string Label { get; }
+
+    public double Percent { get; }
+
+    public string Text { get; }
+}
+
 public sealed class DashboardViewModel : INotifyPropertyChanged
 {
+    private static readonly Brush CpuBrush = Freeze("#7EB6FF");
+    private static readonly Brush RamBrush = Freeze("#3DDC97");
+    private static readonly Brush DiskBrush = Freeze("#F5A524");
+    private static readonly Brush NetBrush = Freeze("#C084FC");
+    private static readonly Brush GpuBrush = Freeze("#F08CB4");
+    private readonly MachineProfile _machine = MachineProfile.Read();
+
     private string _cpuValue = "…";
     private string _cpuDetail = "measuring";
     private IReadOnlyList<double> _cpuSeries = Array.Empty<double>();
@@ -19,8 +65,36 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
     private string _netValue = "…";
     private string _netDetail = "measuring";
     private IReadOnlyList<double> _netSeries = Array.Empty<double>();
+    private string _gpuValue = "…";
+    private string _gpuDetail = "measuring";
+    private IReadOnlyList<double> _gpuSeries = Array.Empty<double>();
+    private string _memoryTotal = "…";
+    private int _historySeconds = 60;
+    private string _heading = "WinMeter";
+    private string _focusValue = "…";
+    private string _chartCaption = "";
+    private Brush _focusStroke = CpuBrush;
+    private double _focusRangeMax = 100;
+    private IReadOnlyList<double> _focusSeries = Array.Empty<double>();
+    private IReadOnlyList<StatRow> _rows = Array.Empty<StatRow>();
+    private IReadOnlyList<CoreLoad> _cores = Array.Empty<CoreLoad>();
+    private Snapshot? _latest;
+    private IReadOnlyList<Snapshot> _history = Array.Empty<Snapshot>();
+    private MeterKind? _focus;
 
     public event PropertyChangedEventHandler? PropertyChanged;
+
+    public DashboardViewModel()
+    {
+        StripPreferences.Changed += (_, _) =>
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StripCpu)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StripMemory)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StripGpu)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StripDisk)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StripNetwork)));
+        };
+    }
 
     public string CpuValue => _cpuValue;
     public string CpuDetail => _cpuDetail;
@@ -34,19 +108,77 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
     public string NetValue => _netValue;
     public string NetDetail => _netDetail;
     public IReadOnlyList<double> NetSeries => _netSeries;
+    public string GpuValue => _gpuValue;
+    public string GpuDetail => _gpuDetail;
+    public IReadOnlyList<double> GpuSeries => _gpuSeries;
+    public string PcModel => _machine.Model;
+    public string PcProcessor => _machine.Processor;
+    public string PcGraphics => _machine.Graphics;
+    public string PcWindows => _machine.Windows;
+    public string PcMemory => _memoryTotal;
+    public string RangeLabel => _historySeconds switch
+    {
+        600 => "Last 10 minutes",
+        3600 => "Last hour",
+        _ => "Last minute"
+    };
+    public int RangeSeconds => _historySeconds;
+    public bool StripCpu
+    {
+        get => StripPreferences.Shows(MeterKind.Cpu);
+        set => StripPreferences.Set(MeterKind.Cpu, value);
+    }
+    public bool StripMemory
+    {
+        get => StripPreferences.Shows(MeterKind.Memory);
+        set => StripPreferences.Set(MeterKind.Memory, value);
+    }
+    public bool StripGpu
+    {
+        get => StripPreferences.Shows(MeterKind.Gpu);
+        set => StripPreferences.Set(MeterKind.Gpu, value);
+    }
+    public bool StripDisk
+    {
+        get => StripPreferences.Shows(MeterKind.Disk);
+        set => StripPreferences.Set(MeterKind.Disk, value);
+    }
+    public bool StripNetwork
+    {
+        get => StripPreferences.Shows(MeterKind.Network);
+        set => StripPreferences.Set(MeterKind.Network, value);
+    }
+    public string Heading => _heading;
+    public string FocusValue => _focusValue;
+    public string ChartCaption => _chartCaption;
+    public Brush FocusStroke => _focusStroke;
+    public double FocusRangeMax => _focusRangeMax;
+    public IReadOnlyList<double> FocusSeries => _focusSeries;
+    public IReadOnlyList<StatRow> Rows => _rows;
+    public IReadOnlyList<CoreLoad> Cores => _cores;
+    public MeterKind? Focus => _focus;
+    public bool ShowingAll => _focus == null;
+    public bool ShowingOne => _focus != null;
+    public bool ShowingCores => _focus == MeterKind.Cpu && _cores.Count > 0;
+    public bool ShowingCaption => _chartCaption.Length > 0;
 
     public void Apply(Snapshot latest, IReadOnlyList<Snapshot> history)
     {
-        var cpu = new double[history.Count];
-        var ram = new double[history.Count];
-        var disk = new double[history.Count];
-        var net = new double[history.Count];
-        for (var i = 0; i < history.Count; i++)
+        _latest = latest;
+        _history = history;
+        var window = Window();
+        var cpu = new double[window.Length];
+        var ram = new double[window.Length];
+        var disk = new double[window.Length];
+        var net = new double[window.Length];
+        var gpu = new double[window.Length];
+        for (var i = 0; i < window.Length; i++)
         {
-            cpu[i] = history[i].CpuPercent;
-            ram[i] = history[i].RamPercent;
-            disk[i] = history[i].DiskReadBps + history[i].DiskWriteBps;
-            net[i] = history[i].NetDownBps;
+            cpu[i] = window[i].CpuPercent;
+            ram[i] = window[i].RamPercent;
+            disk[i] = window[i].DiskReadBps + window[i].DiskWriteBps;
+            net[i] = window[i].NetDownBps;
+            gpu[i] = window[i].GpuPercent;
         }
 
         Set(ref _cpuValue, Format.Percent(latest.CpuPercent), nameof(CpuValue));
@@ -61,6 +193,196 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
         Set(ref _netValue, Format.Rate(latest.NetDownBps), nameof(NetValue));
         Set(ref _netDetail, latest.NetName + " · down " + Format.Rate(latest.NetDownBps) + " · up " + Format.Rate(latest.NetUpBps), nameof(NetDetail));
         Set(ref _netSeries, net, nameof(NetSeries));
+        Set(ref _gpuValue, latest.GpuReady ? Format.Percent(latest.GpuPercent) : "—", nameof(GpuValue));
+        Set(ref _gpuDetail, _machine.Graphics, nameof(GpuDetail));
+        Set(ref _gpuSeries, gpu, nameof(GpuSeries));
+        Set(ref _memoryTotal, Format.Bytes(latest.RamTotalBytes), nameof(PcMemory));
+        if (_focus != null)
+        {
+            FillFocus();
+        }
+    }
+
+    public void SetRange(int seconds)
+    {
+        if (seconds != 60 && seconds != 600 && seconds != 3600)
+        {
+            return;
+        }
+
+        _historySeconds = seconds;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RangeLabel)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RangeSeconds)));
+        if (_latest != null)
+        {
+            Apply(_latest, _history);
+        }
+    }
+
+    public void SetFocus(MeterKind? kind)
+    {
+        _focus = kind;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Focus)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowingAll)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowingOne)));
+        FillFocus();
+    }
+
+    private void FillFocus()
+    {
+        var latest = _latest;
+        var heading = "WinMeter";
+        var value = "…";
+        var caption = "";
+        var stroke = CpuBrush;
+        var range = 100d;
+        IReadOnlyList<double> series = Array.Empty<double>();
+        var rows = new List<StatRow>();
+        var cores = new List<CoreLoad>();
+
+        if (latest != null && _focus != null)
+        {
+            switch (_focus.Value)
+            {
+                case MeterKind.Cpu:
+                    heading = "CPU";
+                    value = Format.Percent(latest.CpuPercent);
+                    stroke = CpuBrush;
+                    range = 100;
+                    series = Series(item => item.CpuPercent);
+                    rows.Add(new StatRow("Logical processors", latest.LogicalProcessors.ToString()));
+                    var busiest = Busiest(latest.CorePercents);
+                    if (busiest >= 0)
+                    {
+                        rows.Add(new StatRow("Busiest core", "Core " + (busiest + 1) + " · " + Format.Percent(latest.CorePercents[busiest])));
+                    }
+
+                    for (var i = 0; i < latest.CorePercents.Length; i++)
+                    {
+                        cores.Add(new CoreLoad((i + 1).ToString(), latest.CorePercents[i], Format.Percent(latest.CorePercents[i])));
+                    }
+
+                    break;
+                case MeterKind.Memory:
+                    heading = "Memory";
+                    value = Format.Percent(latest.RamPercent);
+                    stroke = RamBrush;
+                    range = 100;
+                    series = Series(item => item.RamPercent);
+                    var available = Math.Max(0, latest.RamTotalBytes - latest.RamUsedBytes);
+                    rows.Add(new StatRow("Used", Format.Bytes(latest.RamUsedBytes)));
+                    rows.Add(new StatRow("Available", Format.Bytes(available)));
+                    rows.Add(new StatRow("Total", Format.Bytes(latest.RamTotalBytes)));
+                    if (latest.CommitLimitBytes > 0)
+                    {
+                        rows.Add(new StatRow("Committed", Format.Bytes(latest.CommitUsedBytes) + " / " + Format.Bytes(latest.CommitLimitBytes)));
+                    }
+
+                    break;
+                case MeterKind.Disk:
+                    heading = "Disk";
+                    value = Format.Percent(latest.DiskUsedPercent);
+                    caption = "Read + write";
+                    stroke = DiskBrush;
+                    range = 0;
+                    series = Series(item => item.DiskReadBps + item.DiskWriteBps);
+                    rows.Add(new StatRow("Volume", latest.DiskName));
+                    if (latest.DiskTotalBytes > latest.DiskFreeBytes)
+                    {
+                        rows.Add(new StatRow("Used", Format.Bytes(latest.DiskTotalBytes - latest.DiskFreeBytes)));
+                    }
+
+                    rows.Add(new StatRow("Free", Format.Bytes(latest.DiskFreeBytes)));
+                    if (latest.DiskTotalBytes > 0)
+                    {
+                        rows.Add(new StatRow("Capacity", Format.Bytes(latest.DiskTotalBytes)));
+                    }
+
+                    rows.Add(new StatRow("Read", Format.Rate(latest.DiskReadBps)));
+                    rows.Add(new StatRow("Write", Format.Rate(latest.DiskWriteBps)));
+                    break;
+                case MeterKind.Gpu:
+                    heading = "GPU";
+                    value = latest.GpuReady ? Format.Percent(latest.GpuPercent) : "—";
+                    stroke = GpuBrush;
+                    range = 100;
+                    series = Series(item => item.GpuPercent);
+                    rows.Add(new StatRow("Adapter", _machine.Graphics));
+                    rows.Add(new StatRow("Usage", latest.GpuReady ? Format.Percent(latest.GpuPercent) : "unavailable"));
+                    break;
+                case MeterKind.Network:
+                    heading = "Network";
+                    value = Format.Rate(latest.NetDownBps);
+                    caption = "Download";
+                    stroke = NetBrush;
+                    range = 0;
+                    series = Series(item => item.NetDownBps);
+                    rows.Add(new StatRow("Adapter", latest.NetName));
+                    rows.Add(new StatRow("Download", Format.Rate(latest.NetDownBps)));
+                    rows.Add(new StatRow("Upload", Format.Rate(latest.NetUpBps)));
+                    break;
+            }
+        }
+
+        Set(ref _heading, heading, nameof(Heading));
+        Set(ref _focusValue, value, nameof(FocusValue));
+        Set(ref _chartCaption, caption, nameof(ChartCaption));
+        Set(ref _focusStroke, stroke, nameof(FocusStroke));
+        Set(ref _focusRangeMax, range, nameof(FocusRangeMax));
+        Set(ref _focusSeries, series, nameof(FocusSeries));
+        Set(ref _rows, rows, nameof(Rows));
+        Set(ref _cores, cores, nameof(Cores));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowingCores)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowingCaption)));
+    }
+
+    private Snapshot[] Window()
+    {
+        var count = _history.Count;
+        var take = Math.Min(_historySeconds, count);
+        var slice = new Snapshot[take];
+        var start = count - take;
+        for (var i = 0; i < take; i++)
+        {
+            slice[i] = _history[start + i];
+        }
+
+        return slice;
+    }
+
+    private double[] Series(Func<Snapshot, double> select)
+    {
+        var history = Window();
+        var series = new double[history.Length];
+        for (var i = 0; i < history.Length; i++)
+        {
+            series[i] = select(history[i]);
+        }
+
+        return series;
+    }
+
+    private static int Busiest(double[] cores)
+    {
+        var index = -1;
+        var max = -1d;
+        for (var i = 0; i < cores.Length; i++)
+        {
+            if (cores[i] > max)
+            {
+                max = cores[i];
+                index = i;
+            }
+        }
+
+        return index;
+    }
+
+    private static Brush Freeze(string hex)
+    {
+        var brush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex));
+        brush.Freeze();
+        return brush;
     }
 
     private void Set<T>(ref T field, T value, string name)

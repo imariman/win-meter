@@ -15,4 +15,9 @@
     <Description>Windows tray system monitor</Description>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
+  <ItemGroup>
+    <Resource Include="..\..\assets\winmeter-logo.jpg">
+      <Link>Assets\winmeter-logo.jpg</Link>
+    </Resource>
+  </ItemGroup>
 </Project>

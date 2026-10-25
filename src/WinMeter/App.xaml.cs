@@ -107,7 +107,10 @@ public partial class App : Application
             + " down=" + sample.NetDownBps.ToString("0", System.Globalization.CultureInfo.InvariantCulture)
             + " up=" + sample.NetUpBps.ToString("0", System.Globalization.CultureInfo.InvariantCulture)
             + " iface=" + sample.NetName
-            + " volume=" + sample.DiskName);
+            + " volume=" + sample.DiskName
+            + " cores=" + sample.CorePercents.Length
+            + " gpu=" + sample.GpuPercent.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)
+            + " gpuReady=" + sample.GpuReady);
         return 0;
     }
 

@@ -15,6 +15,9 @@ public partial class DashboardWindow : Window
 
     private bool _allowDeactivate;
     private DateTime _hiddenAt = DateTime.MinValue;
+    private DateTime _suppressDismissUntil;
+
+    public event EventHandler? Dismissed;
 
     public DashboardWindow()
     {
@@ -39,13 +42,54 @@ public partial class DashboardWindow : Window
 
     public void ShowFromMenu()
     {
+        if (DataContext is DashboardViewModel model)
+        {
+            model.SetFocus(null);
+        }
+
         if (IsVisible)
         {
             Activate();
+            PlaceNearCursor();
+            RefreshChrome();
             return;
         }
 
         ShowNearCursor();
+    }
+
+    public bool ShowMeter(MeterKind kind)
+    {
+        if (DataContext is not DashboardViewModel model)
+        {
+            return false;
+        }
+
+        if (IsVisible && model.Focus == kind)
+        {
+            Dismiss();
+            return false;
+        }
+
+        model.SetFocus(kind);
+        if (IsVisible)
+        {
+            Activate();
+            PlaceNearCursor();
+            return true;
+        }
+
+        ShowNearCursor();
+        return true;
+    }
+
+    protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
+    {
+        base.OnRenderSizeChanged(sizeInfo);
+        if (IsVisible && _allowDeactivate)
+        {
+            PlaceNearCursor();
+        }
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -61,21 +105,39 @@ public partial class DashboardWindow : Window
     protected override void OnDeactivated(EventArgs e)
     {
         base.OnDeactivated(e);
-        if (!_allowDeactivate || !IsVisible)
+        if (!_allowDeactivate || !IsVisible || DateTime.UtcNow < _suppressDismissUntil || PointerIsOverStrip())
         {
             return;
         }
 
-        Hide();
-        _hiddenAt = DateTime.UtcNow;
+        Dismiss();
+    }
+
+    private bool PointerIsOverStrip()
+    {
+        var cursor = System.Windows.Forms.Cursor.Position;
+        var under = WindowFromPoint(new NativePoint(cursor.X, cursor.Y));
+        if (under == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        var root = GetAncestor(under, 2);
+        if (root == IntPtr.Zero)
+        {
+            root = under;
+        }
+
+        var self = new WindowInteropHelper(this).Handle;
+        GetWindowThreadProcessId(root, out var processId);
+        return root != self && processId == (uint)Environment.ProcessId;
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
         if (e.Key == Key.Escape)
         {
-            Hide();
-            _hiddenAt = DateTime.UtcNow;
+            Dismiss();
         }
 
         base.OnKeyDown(e);
@@ -83,18 +145,90 @@ public partial class DashboardWindow : Window
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
+        Dismiss();
+    }
+
+    private void Dismiss()
+    {
+        if (!IsVisible)
+        {
+            return;
+        }
+
         Hide();
         _hiddenAt = DateTime.UtcNow;
+        Dismissed?.Invoke(this, EventArgs.Empty);
     }
 
     private void ShowNearCursor()
     {
         _allowDeactivate = false;
+        _suppressDismissUntil = DateTime.UtcNow.AddMilliseconds(500);
         PlaceNearCursor();
         Show();
         Activate();
+        UpdateLayout();
         PlaceNearCursor();
         _allowDeactivate = true;
+        RefreshChrome();
+    }
+
+    private void Range_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Button button || button.Tag is not string tag || !int.TryParse(tag, out var seconds))
+        {
+            return;
+        }
+
+        if (DataContext is DashboardViewModel model)
+        {
+            model.SetRange(seconds);
+        }
+
+        RefreshChrome();
+    }
+
+    private void Strip_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.CheckBox box || box.Tag is not string name || !Enum.TryParse(name, out MeterKind kind))
+        {
+            return;
+        }
+
+        StripPreferences.Set(kind, box.IsChecked == true);
+    }
+
+    private void Startup_Click(object sender, RoutedEventArgs e)
+    {
+        AutoStart.Set(StartupBox.IsChecked == true);
+    }
+
+    private void Exit_Click(object sender, RoutedEventArgs e)
+    {
+        System.Windows.Application.Current?.Shutdown();
+    }
+
+    private void RefreshChrome()
+    {
+        if (DataContext is not DashboardViewModel model)
+        {
+            return;
+        }
+
+        PaintRange(RangeMinuteButton, model.RangeSeconds == 60);
+        PaintRange(RangeTenButton, model.RangeSeconds == 600);
+        PaintRange(RangeHourButton, model.RangeSeconds == 3600);
+        StartupBox.IsChecked = AutoStart.IsEnabled();
+    }
+
+    private static void PaintRange(System.Windows.Controls.Button button, bool selected)
+    {
+        button.Background = new System.Windows.Media.SolidColorBrush(selected
+            ? System.Windows.Media.Color.FromArgb(0x33, 0xFF, 0xFF, 0xFF)
+            : System.Windows.Media.Color.FromArgb(0x00, 0xFF, 0xFF, 0xFF));
+        button.Foreground = new System.Windows.Media.SolidColorBrush(selected
+            ? System.Windows.Media.Color.FromRgb(0xF4, 0xF6, 0xFB)
+            : System.Windows.Media.Color.FromRgb(0xA7, 0xAE, 0xC0));
     }
 
     private void PlaceNearCursor()
@@ -104,9 +238,9 @@ public partial class DashboardWindow : Window
         var cursor = System.Windows.Forms.Cursor.Position;
         var area = System.Windows.Forms.Screen.FromPoint(cursor).WorkingArea;
         var width = ActualWidth > 1 ? ActualWidth : Width;
-        var height = ActualHeight > 1 ? ActualHeight : 560;
+        var height = ActualHeight > 1 ? ActualHeight : 420;
         var x = cursor.X / scale.X - width + 28;
-        var y = cursor.Y / scale.Y - height - 10;
+        var y = area.Bottom / scale.Y - height - 8;
         var left = area.Left / scale.X;
         var top = area.Top / scale.Y;
         var right = area.Right / scale.X;
@@ -161,8 +295,30 @@ public partial class DashboardWindow : Window
             : new IntPtr(SetWindowLong32(handle, index, value.ToInt32()));
     }
 
+    [DllImport("user32.dll")]
+    private static extern IntPtr WindowFromPoint(NativePoint point);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetAncestor(IntPtr window, uint flags);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
+
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr handle, int attribute, ref int value, int size);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativePoint
+    {
+        public int X;
+        public int Y;
+
+        public NativePoint(int x, int y)
+        {
+            X = x;
+            Y = y;
+        }
+    }
 
     [DllImport("user32.dll", EntryPoint = "GetWindowLongW")]
     private static extern int GetWindowLong32(IntPtr handle, int index);

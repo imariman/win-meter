@@ -12,10 +12,13 @@ namespace WinMeter.Metrics;
 
 internal sealed class SystemSampler : IDisposable
 {
-    private const int HistoryLimit = 60;
+    private const int HistoryLimit = 3600;
+    private const int ProcessorPerformanceClass = 8;
+    private const uint StatusInfoLengthMismatch = 0xC0000004;
     private readonly object _gate = new();
     private readonly List<Snapshot> _history = new();
     private readonly PdhReader _disk = new();
+    private readonly GpuUsage _gpu = new();
     private readonly CancellationTokenSource _cancel = new();
     private Task? _loop;
     private NetworkInterface? _adapter;
@@ -55,6 +58,15 @@ internal sealed class SystemSampler : IDisposable
             _disk.Collect();
         }
 
+        try
+        {
+            _gpu.Collect();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(ex);
+        }
+
         _loop = Task.Run(LoopAsync);
     }
 
@@ -70,6 +82,7 @@ internal sealed class SystemSampler : IDisposable
         }
 
         _disk.Dispose();
+        _gpu.Dispose();
         _cancel.Dispose();
     }
 
@@ -77,6 +90,7 @@ internal sealed class SystemSampler : IDisposable
     {
         CpuTimes? previousCpu = ReadCpu();
         NetPoint? previousNet = ReadNet();
+        CoreTimes[]? previousCores = ReadCoreTimes();
         var previousAt = DateTime.UtcNow;
 
         while (!_cancel.IsCancellationRequested)
@@ -95,12 +109,15 @@ internal sealed class SystemSampler : IDisposable
             previousAt = now;
             var cpu = ReadCpu();
             var net = ReadNet();
+            var coreTimes = ReadCoreTimes();
 
             if (elapsed <= 0 || elapsed > 5 || previousCpu == null || cpu == null || previousNet == null || net == null)
             {
                 previousCpu = cpu;
                 previousNet = net;
+                previousCores = coreTimes;
                 TryCollectDisk();
+                TryCollectGpu();
                 continue;
             }
 
@@ -137,10 +154,17 @@ internal sealed class SystemSampler : IDisposable
                 down,
                 up,
                 net.Value.Name,
-                HasDelta: true);
+                HasDelta: true,
+                PercentCores(previousCores, coreTimes),
+                memory.CommitUsed,
+                memory.CommitLimit,
+                disk.TotalBytes,
+                _gpu.HasEngines,
+                ReadGpu());
 
             previousCpu = cpu;
             previousNet = net;
+            previousCores = coreTimes;
             Publish(snapshot);
         }
     }
@@ -169,6 +193,32 @@ internal sealed class SystemSampler : IDisposable
         catch (Exception ex)
         {
             Debug.WriteLine(ex);
+        }
+    }
+
+    private void TryCollectGpu()
+    {
+        try
+        {
+            _gpu.Collect();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(ex);
+        }
+    }
+
+    private double ReadGpu()
+    {
+        try
+        {
+            _gpu.Collect();
+            return _gpu.Read();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(ex);
+            return 0;
         }
     }
 
@@ -201,11 +251,14 @@ internal sealed class SystemSampler : IDisposable
         var status = new MemoryStatusEx { Length = (uint)Marshal.SizeOf<MemoryStatusEx>() };
         if (!GlobalMemoryStatusEx(ref status) || status.TotalPhysical == 0)
         {
-            return new RamPoint(0, 0, 0);
+            return new RamPoint(0, 0, 0, 0, 0);
         }
 
         var used = (long)(status.TotalPhysical - status.AvailablePhysical);
-        return new RamPoint(status.MemoryLoad, used, (long)status.TotalPhysical);
+        var commitUsed = status.TotalPageFile > status.AvailablePageFile
+            ? (long)(status.TotalPageFile - status.AvailablePageFile)
+            : 0;
+        return new RamPoint(status.MemoryLoad, used, (long)status.TotalPhysical, commitUsed, (long)status.TotalPageFile);
     }
 
     private static DiskPoint ReadDisk()
@@ -216,7 +269,7 @@ internal sealed class SystemSampler : IDisposable
             var drive = new DriveInfo(root);
             if (!drive.IsReady || drive.TotalSize <= 0)
             {
-                return new DiskPoint(root.TrimEnd('\\'), 0, 0);
+                return new DiskPoint(root.TrimEnd('\\'), 0, 0, 0);
             }
 
             var free = drive.AvailableFreeSpace;
@@ -227,12 +280,12 @@ internal sealed class SystemSampler : IDisposable
                 name += " " + drive.VolumeLabel;
             }
 
-            return new DiskPoint(name, usedPercent, free);
+            return new DiskPoint(name, usedPercent, free, drive.TotalSize);
         }
         catch (Exception ex)
         {
             Debug.WriteLine(ex);
-            return new DiskPoint("Disk", 0, 0);
+            return new DiskPoint("Disk", 0, 0, 0);
         }
     }
 
@@ -333,8 +386,89 @@ internal sealed class SystemSampler : IDisposable
         return ((ulong)value.High << 32) | value.Low;
     }
 
+    private CoreTimes[]? ReadCoreTimes()
+    {
+        var count = Environment.ProcessorCount;
+        if (count <= 0)
+        {
+            return null;
+        }
+
+        var stride = Marshal.SizeOf<ProcessorPerformance>();
+        var length = stride * count;
+        var buffer = Marshal.AllocHGlobal(length);
+        try
+        {
+            var status = NtQuerySystemInformation(ProcessorPerformanceClass, buffer, length, out var returned);
+            if (status == StatusInfoLengthMismatch && returned > length && returned <= stride * 256)
+            {
+                Marshal.FreeHGlobal(buffer);
+                buffer = IntPtr.Zero;
+                length = returned;
+                buffer = Marshal.AllocHGlobal(length);
+                status = NtQuerySystemInformation(ProcessorPerformanceClass, buffer, length, out returned);
+            }
+
+            if (status != 0 || returned < stride)
+            {
+                return null;
+            }
+
+            var n = Math.Min(returned / stride, 256);
+            var cores = new CoreTimes[n];
+            for (var i = 0; i < n; i++)
+            {
+                var info = Marshal.PtrToStructure<ProcessorPerformance>(IntPtr.Add(buffer, i * stride));
+                cores[i] = new CoreTimes(info.IdleTime, info.KernelTime, info.UserTime);
+            }
+
+            return cores;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(ex);
+            return null;
+        }
+        finally
+        {
+            if (buffer != IntPtr.Zero)
+            {
+                Marshal.FreeHGlobal(buffer);
+            }
+        }
+    }
+
+    private static double[] PercentCores(CoreTimes[]? previous, CoreTimes[]? current)
+    {
+        if (previous == null || current == null || previous.Length != current.Length || current.Length == 0)
+        {
+            return Array.Empty<double>();
+        }
+
+        var result = new double[current.Length];
+        for (var i = 0; i < current.Length; i++)
+        {
+            var idle = current[i].Idle - previous[i].Idle;
+            var kernel = current[i].Kernel - previous[i].Kernel;
+            var user = current[i].User - previous[i].User;
+            var total = kernel + user;
+            if (idle < 0 || kernel < 0 || user < 0 || total <= 0)
+            {
+                continue;
+            }
+
+            var busy = kernel > idle ? kernel - idle + user : user;
+            result[i] = Math.Clamp(busy * 100.0 / total, 0, 100);
+        }
+
+        return result;
+    }
+
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool GetSystemTimes(out FileTime idle, out FileTime kernel, out FileTime user);
+
+    [DllImport("ntdll.dll")]
+    private static extern uint NtQuerySystemInformation(int systemInformationClass, IntPtr buffer, int length, out int returnLength);
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool GlobalMemoryStatusEx(ref MemoryStatusEx buffer);
@@ -369,9 +503,22 @@ internal sealed class SystemSampler : IDisposable
         public ulong Busy => Kernel > Idle ? Kernel - Idle + User : User;
     }
 
-    private readonly record struct RamPoint(double Percent, long Used, long Total);
+    private readonly record struct RamPoint(double Percent, long Used, long Total, long CommitUsed, long CommitLimit);
 
-    private readonly record struct DiskPoint(string Name, double UsedPercent, long FreeBytes);
+    private readonly record struct DiskPoint(string Name, double UsedPercent, long FreeBytes, long TotalBytes);
+
+    private readonly record struct CoreTimes(long Idle, long Kernel, long User);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ProcessorPerformance
+    {
+        public long IdleTime;
+        public long KernelTime;
+        public long UserTime;
+        public long DpcTime;
+        public long InterruptTime;
+        public uint InterruptCount;
+    }
 
     private readonly record struct NetPoint(string Id, string Name, long Received, long Sent);
 }

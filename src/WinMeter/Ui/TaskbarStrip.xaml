@@ -1,0 +1,82 @@
+<Window x:Class="WinMeter.Ui.TaskbarStrip"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="WinMeter"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        Topmost="True"
+        Background="#14161C"
+        SizeToContent="Width"
+        Height="32"
+        FontFamily="Segoe UI"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display"
+        Cursor="Hand">
+    <Window.Resources>
+        <Style x:Key="Segment" TargetType="Border">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="6,4"/>
+            <Setter Property="Margin" Value="1,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#22FFFFFF"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="6,0">
+        <Border x:Name="MenuHit" Padding="2,0" Style="{StaticResource Segment}" ToolTip="Home" MouseLeftButtonUp="Logo_Click">
+            <Image Width="22" Height="22" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" Source="pack://application:,,,/Assets/winmeter-logo.jpg"/>
+        </Border>
+        <Border x:Name="CpuHit" Tag="Cpu" Style="{StaticResource Segment}" MouseLeftButtonUp="Segment_Click">
+            <Grid>
+                <Border x:Name="CpuHighlight" Background="#28FFFFFF" CornerRadius="6" Margin="-6,-4" Opacity="0"/>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="CPU" Foreground="#8EB7FF" FontSize="13" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="CpuValue" Text="…" Foreground="#F4F6FB" FontSize="13" FontWeight="SemiBold" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+        <Border x:Name="RamHit" Tag="Memory" Style="{StaticResource Segment}" MouseLeftButtonUp="Segment_Click">
+            <Grid>
+                <Border x:Name="RamHighlight" Background="#28FFFFFF" CornerRadius="6" Margin="-6,-4" Opacity="0"/>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="RAM" Foreground="#5EE0A8" FontSize="13" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="RamValue" Text="…" Foreground="#F4F6FB" FontSize="13" FontWeight="SemiBold" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+        <Border x:Name="GpuHit" Tag="Gpu" Style="{StaticResource Segment}" MouseLeftButtonUp="Segment_Click">
+            <Grid>
+                <Border x:Name="GpuHighlight" Background="#28FFFFFF" CornerRadius="6" Margin="-6,-4" Opacity="0"/>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="GPU" Foreground="#F08CB4" FontSize="13" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="GpuValue" Text="…" Foreground="#F4F6FB" FontSize="13" FontWeight="SemiBold" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+        <Border x:Name="SsdHit" Tag="Disk" Style="{StaticResource Segment}" MouseLeftButtonUp="Segment_Click">
+            <Grid>
+                <Border x:Name="SsdHighlight" Background="#28FFFFFF" CornerRadius="6" Margin="-6,-4" Opacity="0"/>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="SSD" Foreground="#F5B042" FontSize="13" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="SsdValue" Text="…" Foreground="#F4F6FB" FontSize="13" FontWeight="SemiBold" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+        <Border x:Name="NetHit" Tag="Network" Style="{StaticResource Segment}" MouseLeftButtonUp="Segment_Click">
+            <Grid>
+                <Border x:Name="NetHighlight" Background="#28FFFFFF" CornerRadius="6" Margin="-6,-4" Opacity="0"/>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="NET" Foreground="#C9A0FF" FontSize="13" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="NetValue" Text="…" Foreground="#F4F6FB" FontSize="13" FontWeight="SemiBold" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </StackPanel>
+</Window>
