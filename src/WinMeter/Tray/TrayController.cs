@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using WinMeter.Metrics;
 using WinMeter.Ui;
@@ -62,6 +63,15 @@ internal sealed class TrayController : IDisposable
 
         _sampler.Updated += OnSample;
         _sampler.Start();
+        _ = Task.Run(PromoteWhenWindowsRegistersIcons);
+    }
+
+    private static async Task PromoteWhenWindowsRegistersIcons()
+    {
+        await Task.Delay(500);
+        TrayPromoter.PromoteCurrentProcess();
+        await Task.Delay(1500);
+        TrayPromoter.PromoteCurrentProcess();
     }
 
     public void Dispose()
