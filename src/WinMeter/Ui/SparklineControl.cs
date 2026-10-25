@@ -53,10 +53,8 @@ public class SparklineControl : FrameworkElement
             return;
         }
 
-        context.DrawLine(
-            new Pen(new SolidColorBrush(Color.FromArgb(40, 255, 255, 255)), 1),
-            new Point(0, height - 1),
-            new Point(width, height - 1));
+        context.DrawLine(GridPen, new Point(0, height - 1), new Point(width, height - 1));
+        context.DrawLine(GuidePen, new Point(0, Math.Round(height / 2) + 0.5), new Point(width, Math.Round(height / 2) + 0.5));
 
         var values = Values;
         if (values == null || values.Count == 0)
@@ -120,14 +118,51 @@ public class SparklineControl : FrameworkElement
 
         line.Freeze();
         fill.Freeze();
-        var fillBrush = Stroke.Clone();
-        fillBrush.Opacity = 0.18;
-        context.DrawGeometry(fillBrush, null, fill);
+        context.DrawGeometry(FillBrush(), null, fill);
         context.DrawGeometry(null, new Pen(Stroke, 1.5)
         {
             StartLineCap = PenLineCap.Round,
             EndLineCap = PenLineCap.Round,
             LineJoin = PenLineJoin.Round
         }, line);
+
+        var lastValue = Math.Clamp(values[values.Count - 1], 0, max);
+        var marker = new Point(width, height - 1 - (lastValue / max) * (height - 2));
+        var halo = Stroke.Clone();
+        halo.Opacity = 0.25;
+        context.DrawEllipse(halo, null, marker, 5, 5);
+        context.DrawEllipse(Stroke, null, marker, 2.5, 2.5);
+    }
+
+    private static readonly Pen GridPen = Frozen(new Pen(new SolidColorBrush(Color.FromArgb(40, 255, 255, 255)), 1));
+
+    private static readonly Pen GuidePen = Frozen(new Pen(new SolidColorBrush(Color.FromArgb(22, 255, 255, 255)), 1)
+    {
+        DashStyle = new DashStyle(new[] { 2d, 3d }, 0)
+    });
+
+    // Fades the stroke color from the line down to nothing at the baseline.
+    private Brush FillBrush()
+    {
+        if (Stroke is not SolidColorBrush solid)
+        {
+            var flat = Stroke.Clone();
+            flat.Opacity = 0.18;
+            return flat;
+        }
+
+        var color = solid.Color;
+        var brush = new LinearGradientBrush(
+            Color.FromArgb(80, color.R, color.G, color.B),
+            Color.FromArgb(0, color.R, color.G, color.B),
+            90);
+        brush.Freeze();
+        return brush;
+    }
+
+    private static Pen Frozen(Pen pen)
+    {
+        pen.Freeze();
+        return pen;
     }
 }

@@ -10,12 +10,13 @@
         Background="#14161C"
         SizeToContent="Width"
         Height="32"
-        FontFamily="Segoe UI"
+        FontFamily="Segoe UI Variable Text, Segoe UI"
         UseLayoutRounding="True"
         SnapsToDevicePixels="True"
         TextOptions.TextFormattingMode="Display"
         Cursor="Hand">
     <Window.Resources>
+        <!-- Metric accents match DashboardWindow.xaml. Values keep a minimum width so the strip does not resize every second. -->
         <Style x:Key="Segment" TargetType="Border">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="CornerRadius" Value="6"/>
@@ -37,8 +38,8 @@
             <Grid>
                 <Border x:Name="CpuHighlight" Background="#28FFFFFF" CornerRadius="6" Margin="-6,-4" Opacity="0"/>
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="CPU" Foreground="#8EB7FF" FontSize="13" VerticalAlignment="Center"/>
-                    <TextBlock x:Name="CpuValue" Text="…" Foreground="#F4F6FB" FontSize="13" FontWeight="SemiBold" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="CPU" Foreground="#60A5FA" FontSize="13" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="CpuValue" Text="…" Foreground="#F8FAFC" FontSize="13" FontWeight="SemiBold" Typography.NumeralAlignment="Tabular" MinWidth="32" Margin="5,0,0,0" VerticalAlignment="Center"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -46,8 +47,8 @@
             <Grid>
                 <Border x:Name="RamHighlight" Background="#28FFFFFF" CornerRadius="6" Margin="-6,-4" Opacity="0"/>
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="RAM" Foreground="#5EE0A8" FontSize="13" VerticalAlignment="Center"/>
-                    <TextBlock x:Name="RamValue" Text="…" Foreground="#F4F6FB" FontSize="13" FontWeight="SemiBold" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="RAM" Foreground="#4ADE80" FontSize="13" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="RamValue" Text="…" Foreground="#F8FAFC" FontSize="13" FontWeight="SemiBold" Typography.NumeralAlignment="Tabular" MinWidth="32" Margin="5,0,0,0" VerticalAlignment="Center"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -55,8 +56,8 @@
             <Grid>
                 <Border x:Name="GpuHighlight" Background="#28FFFFFF" CornerRadius="6" Margin="-6,-4" Opacity="0"/>
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="GPU" Foreground="#F08CB4" FontSize="13" VerticalAlignment="Center"/>
-                    <TextBlock x:Name="GpuValue" Text="…" Foreground="#F4F6FB" FontSize="13" FontWeight="SemiBold" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="GPU" Foreground="#F472B6" FontSize="13" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="GpuValue" Text="…" Foreground="#F8FAFC" FontSize="13" FontWeight="SemiBold" Typography.NumeralAlignment="Tabular" MinWidth="32" Margin="5,0,0,0" VerticalAlignment="Center"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -64,8 +65,8 @@
             <Grid>
                 <Border x:Name="SsdHighlight" Background="#28FFFFFF" CornerRadius="6" Margin="-6,-4" Opacity="0"/>
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="SSD" Foreground="#F5B042" FontSize="13" VerticalAlignment="Center"/>
-                    <TextBlock x:Name="SsdValue" Text="…" Foreground="#F4F6FB" FontSize="13" FontWeight="SemiBold" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="SSD" Foreground="#2DD4BF" FontSize="13" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="SsdValue" Text="…" Foreground="#F8FAFC" FontSize="13" FontWeight="SemiBold" Typography.NumeralAlignment="Tabular" MinWidth="32" Margin="5,0,0,0" VerticalAlignment="Center"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -73,8 +74,8 @@
             <Grid>
                 <Border x:Name="NetHighlight" Background="#28FFFFFF" CornerRadius="6" Margin="-6,-4" Opacity="0"/>
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="NET" Foreground="#C9A0FF" FontSize="13" VerticalAlignment="Center"/>
-                    <TextBlock x:Name="NetValue" Text="…" Foreground="#F4F6FB" FontSize="13" FontWeight="SemiBold" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="NET" Foreground="#A78BFA" FontSize="13" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="NetValue" Text="…" Foreground="#F8FAFC" FontSize="13" FontWeight="SemiBold" Typography.NumeralAlignment="Tabular" MinWidth="38" Margin="5,0,0,0" VerticalAlignment="Center"/>
                 </StackPanel>
             </Grid>
         </Border>

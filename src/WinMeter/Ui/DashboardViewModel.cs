@@ -35,6 +35,7 @@ public sealed class CoreLoad
         Label = label;
         Percent = percent;
         Text = text;
+        Level = LoadLevel.For(percent);
     }
 
     public string Label { get; }
@@ -42,36 +43,48 @@ public sealed class CoreLoad
     public double Percent { get; }
 
     public string Text { get; }
+
+    public string Level { get; }
 }
 
 public sealed class DashboardViewModel : INotifyPropertyChanged
 {
-    private static readonly Brush CpuBrush = Freeze("#7EB6FF");
-    private static readonly Brush RamBrush = Freeze("#3DDC97");
-    private static readonly Brush DiskBrush = Freeze("#F5A524");
-    private static readonly Brush NetBrush = Freeze("#C084FC");
-    private static readonly Brush GpuBrush = Freeze("#F08CB4");
+    // Metric accents; keep in sync with DashboardWindow.xaml and TaskbarStrip.xaml.
+    private static readonly Brush CpuBrush = Freeze("#60A5FA");
+    private static readonly Brush RamBrush = Freeze("#4ADE80");
+    private static readonly Brush DiskBrush = Freeze("#2DD4BF");
+    private static readonly Brush NetBrush = Freeze("#A78BFA");
+    private static readonly Brush GpuBrush = Freeze("#F472B6");
     private readonly MachineProfile _machine = MachineProfile.Read();
 
     private string _cpuValue = "…";
+    private double _cpuPercent;
+    private string _cpuLevel = LoadLevel.Normal;
     private string _cpuDetail = "measuring";
     private IReadOnlyList<double> _cpuSeries = Array.Empty<double>();
     private string _ramValue = "…";
+    private double _ramPercent;
+    private string _ramLevel = LoadLevel.Normal;
     private string _ramDetail = "measuring";
     private IReadOnlyList<double> _ramSeries = Array.Empty<double>();
     private string _diskValue = "…";
+    private double _diskPercent;
+    private string _diskLevel = LoadLevel.Normal;
     private string _diskDetail = "measuring";
     private IReadOnlyList<double> _diskSeries = Array.Empty<double>();
     private string _netValue = "…";
     private string _netDetail = "measuring";
     private IReadOnlyList<double> _netSeries = Array.Empty<double>();
     private string _gpuValue = "…";
+    private double _gpuPercent;
+    private string _gpuLevel = LoadLevel.Normal;
     private string _gpuDetail = "measuring";
     private IReadOnlyList<double> _gpuSeries = Array.Empty<double>();
     private string _memoryTotal = "…";
     private int _historySeconds = 60;
     private string _heading = "WinMeter";
     private string _focusValue = "…";
+    private string _focusLevel = LoadLevel.Normal;
     private string _chartCaption = "";
     private Brush _focusStroke = CpuBrush;
     private double _focusRangeMax = 100;
@@ -97,18 +110,26 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
     }
 
     public string CpuValue => _cpuValue;
+    public double CpuPercent => _cpuPercent;
+    public string CpuLevel => _cpuLevel;
     public string CpuDetail => _cpuDetail;
     public IReadOnlyList<double> CpuSeries => _cpuSeries;
     public string RamValue => _ramValue;
+    public double RamPercent => _ramPercent;
+    public string RamLevel => _ramLevel;
     public string RamDetail => _ramDetail;
     public IReadOnlyList<double> RamSeries => _ramSeries;
     public string DiskValue => _diskValue;
+    public double DiskPercent => _diskPercent;
+    public string DiskLevel => _diskLevel;
     public string DiskDetail => _diskDetail;
     public IReadOnlyList<double> DiskSeries => _diskSeries;
     public string NetValue => _netValue;
     public string NetDetail => _netDetail;
     public IReadOnlyList<double> NetSeries => _netSeries;
     public string GpuValue => _gpuValue;
+    public double GpuPercent => _gpuPercent;
+    public string GpuLevel => _gpuLevel;
     public string GpuDetail => _gpuDetail;
     public IReadOnlyList<double> GpuSeries => _gpuSeries;
     public string PcModel => _machine.Model;
@@ -150,6 +171,7 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
     }
     public string Heading => _heading;
     public string FocusValue => _focusValue;
+    public string FocusLevel => _focusLevel;
     public string ChartCaption => _chartCaption;
     public Brush FocusStroke => _focusStroke;
     public double FocusRangeMax => _focusRangeMax;
@@ -182,18 +204,26 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
         }
 
         Set(ref _cpuValue, Format.Percent(latest.CpuPercent), nameof(CpuValue));
+        Set(ref _cpuPercent, Math.Clamp(latest.CpuPercent, 0, 100), nameof(CpuPercent));
+        Set(ref _cpuLevel, LoadLevel.For(latest.CpuPercent), nameof(CpuLevel));
         Set(ref _cpuDetail, latest.LogicalProcessors + " logical processors", nameof(CpuDetail));
         Set(ref _cpuSeries, cpu, nameof(CpuSeries));
         Set(ref _ramValue, Format.Percent(latest.RamPercent), nameof(RamValue));
+        Set(ref _ramPercent, Math.Clamp(latest.RamPercent, 0, 100), nameof(RamPercent));
+        Set(ref _ramLevel, LoadLevel.For(latest.RamPercent), nameof(RamLevel));
         Set(ref _ramDetail, Format.Bytes(latest.RamUsedBytes) + " / " + Format.Bytes(latest.RamTotalBytes), nameof(RamDetail));
         Set(ref _ramSeries, ram, nameof(RamSeries));
         Set(ref _diskValue, Format.Percent(latest.DiskUsedPercent), nameof(DiskValue));
+        Set(ref _diskPercent, Math.Clamp(latest.DiskUsedPercent, 0, 100), nameof(DiskPercent));
+        Set(ref _diskLevel, LoadLevel.For(latest.DiskUsedPercent), nameof(DiskLevel));
         Set(ref _diskDetail, latest.DiskName + " · " + Format.Bytes(latest.DiskFreeBytes) + " free · read " + Format.Rate(latest.DiskReadBps) + " · write " + Format.Rate(latest.DiskWriteBps), nameof(DiskDetail));
         Set(ref _diskSeries, disk, nameof(DiskSeries));
         Set(ref _netValue, Format.Rate(latest.NetDownBps), nameof(NetValue));
         Set(ref _netDetail, latest.NetName + " · down " + Format.Rate(latest.NetDownBps) + " · up " + Format.Rate(latest.NetUpBps), nameof(NetDetail));
         Set(ref _netSeries, net, nameof(NetSeries));
         Set(ref _gpuValue, latest.GpuReady ? Format.Percent(latest.GpuPercent) : "—", nameof(GpuValue));
+        Set(ref _gpuPercent, latest.GpuReady ? Math.Clamp(latest.GpuPercent, 0, 100) : 0, nameof(GpuPercent));
+        Set(ref _gpuLevel, latest.GpuReady ? LoadLevel.For(latest.GpuPercent) : LoadLevel.Normal, nameof(GpuLevel));
         Set(ref _gpuDetail, _machine.Graphics, nameof(GpuDetail));
         Set(ref _gpuSeries, gpu, nameof(GpuSeries));
         Set(ref _memoryTotal, Format.Bytes(latest.RamTotalBytes), nameof(PcMemory));
@@ -233,6 +263,7 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
         var latest = _latest;
         var heading = "WinMeter";
         var value = "…";
+        var level = LoadLevel.Normal;
         var caption = "";
         var stroke = CpuBrush;
         var range = 100d;
@@ -247,6 +278,7 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
                 case MeterKind.Cpu:
                     heading = "CPU";
                     value = Format.Percent(latest.CpuPercent);
+                    level = LoadLevel.For(latest.CpuPercent);
                     stroke = CpuBrush;
                     range = 100;
                     series = Series(item => item.CpuPercent);
@@ -266,6 +298,7 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
                 case MeterKind.Memory:
                     heading = "Memory";
                     value = Format.Percent(latest.RamPercent);
+                    level = LoadLevel.For(latest.RamPercent);
                     stroke = RamBrush;
                     range = 100;
                     series = Series(item => item.RamPercent);
@@ -282,6 +315,7 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
                 case MeterKind.Disk:
                     heading = "Disk";
                     value = Format.Percent(latest.DiskUsedPercent);
+                    level = LoadLevel.For(latest.DiskUsedPercent);
                     caption = "Read + write";
                     stroke = DiskBrush;
                     range = 0;
@@ -304,6 +338,7 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
                 case MeterKind.Gpu:
                     heading = "GPU";
                     value = latest.GpuReady ? Format.Percent(latest.GpuPercent) : "—";
+                    level = latest.GpuReady ? LoadLevel.For(latest.GpuPercent) : LoadLevel.Normal;
                     stroke = GpuBrush;
                     range = 100;
                     series = Series(item => item.GpuPercent);
@@ -326,6 +361,7 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
 
         Set(ref _heading, heading, nameof(Heading));
         Set(ref _focusValue, value, nameof(FocusValue));
+        Set(ref _focusLevel, level, nameof(FocusLevel));
         Set(ref _chartCaption, caption, nameof(ChartCaption));
         Set(ref _focusStroke, stroke, nameof(FocusStroke));
         Set(ref _focusRangeMax, range, nameof(FocusRangeMax));

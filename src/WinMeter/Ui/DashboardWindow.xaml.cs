@@ -3,6 +3,8 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 
 namespace WinMeter.Ui;
 
@@ -12,6 +14,13 @@ public partial class DashboardWindow : Window
     private const int ToolWindowStyle = 0x00000080;
     private const int CornerPreferenceAttribute = 33;
     private const int RoundCorners = 2;
+    private const int BorderColorAttribute = 34;
+    private const int BorderColor = 0x00554133; // #334155 as COLORREF (0x00BBGGRR)
+
+    private static readonly Brush RangeOnBackground = Frozen(Color.FromRgb(0x33, 0x41, 0x55));
+    private static readonly Brush RangeOffBackground = Frozen(Colors.Transparent);
+    private static readonly Brush RangeOnForeground = Frozen(Color.FromRgb(0xF8, 0xFA, 0xFC));
+    private static readonly Brush RangeOffForeground = Frozen(Color.FromRgb(0x94, 0xA3, 0xB8));
 
     private bool _allowDeactivate;
     private DateTime _hiddenAt = DateTime.MinValue;
@@ -22,6 +31,8 @@ public partial class DashboardWindow : Window
     public DashboardWindow()
     {
         InitializeComponent();
+        var version = typeof(DashboardWindow).Assembly.GetName().Version;
+        VersionText.Text = version == null ? string.Empty : "v" + version.ToString(3);
     }
 
     public void ToggleFromTray()
@@ -98,6 +109,8 @@ public partial class DashboardWindow : Window
         var handle = new WindowInteropHelper(this).Handle;
         var preference = RoundCorners;
         DwmSetWindowAttribute(handle, CornerPreferenceAttribute, ref preference, sizeof(int));
+        var border = BorderColor;
+        DwmSetWindowAttribute(handle, BorderColorAttribute, ref border, sizeof(int));
         var style = GetWindowLongPtr(handle, ExtendedStyleIndex);
         SetWindowLongPtr(handle, ExtendedStyleIndex, new IntPtr(style.ToInt64() | ToolWindowStyle));
     }
@@ -171,6 +184,21 @@ public partial class DashboardWindow : Window
         PlaceNearCursor();
         _allowDeactivate = true;
         RefreshChrome();
+        AnimateIn();
+    }
+
+    private void AnimateIn()
+    {
+        // Respect the Windows "Animation effects" setting.
+        if (!SystemParameters.ClientAreaAnimation)
+        {
+            return;
+        }
+
+        var duration = TimeSpan.FromMilliseconds(180);
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+        Root.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, duration) { EasingFunction = ease });
+        RootOffset.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(8, 0, duration) { EasingFunction = ease });
     }
 
     private void Range_Click(object sender, RoutedEventArgs e)
@@ -223,12 +251,16 @@ public partial class DashboardWindow : Window
 
     private static void PaintRange(System.Windows.Controls.Button button, bool selected)
     {
-        button.Background = new System.Windows.Media.SolidColorBrush(selected
-            ? System.Windows.Media.Color.FromArgb(0x33, 0xFF, 0xFF, 0xFF)
-            : System.Windows.Media.Color.FromArgb(0x00, 0xFF, 0xFF, 0xFF));
-        button.Foreground = new System.Windows.Media.SolidColorBrush(selected
-            ? System.Windows.Media.Color.FromRgb(0xF4, 0xF6, 0xFB)
-            : System.Windows.Media.Color.FromRgb(0xA7, 0xAE, 0xC0));
+        button.Background = selected ? RangeOnBackground : RangeOffBackground;
+        button.Foreground = selected ? RangeOnForeground : RangeOffForeground;
+        button.FontWeight = selected ? FontWeights.SemiBold : FontWeights.Normal;
+    }
+
+    private static Brush Frozen(Color color)
+    {
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+        return brush;
     }
 
     private void PlaceNearCursor()
