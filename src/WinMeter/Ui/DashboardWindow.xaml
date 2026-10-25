@@ -396,7 +396,7 @@
                     </Grid>
                     <ProgressBar Style="{StaticResource Meter}" Value="{Binding CpuPercent, Mode=OneWay}"
                                  Foreground="{Binding CpuLevel, Converter={StaticResource LevelBrush}, ConverterParameter={StaticResource CpuBrush}}"/>
-                    <ui:SparklineControl Style="{StaticResource Sparkline}" Stroke="{StaticResource CpuBrush}" RangeMax="100" Values="{Binding CpuSeries}"/>
+                    <ui:SparklineControl Capacity="{Binding SeriesCapacity}" Origin="{Binding SeriesOrigin}" Style="{StaticResource Sparkline}" Stroke="{StaticResource CpuBrush}" RangeMax="100" Values="{Binding CpuSeries}"/>
                     <TextBlock Text="{Binding CpuDetail}" Style="{StaticResource Detail}"/>
                 </StackPanel>
             </Border>
@@ -416,7 +416,7 @@
                     </Grid>
                     <ProgressBar Style="{StaticResource Meter}" Value="{Binding RamPercent, Mode=OneWay}"
                                  Foreground="{Binding RamLevel, Converter={StaticResource LevelBrush}, ConverterParameter={StaticResource MemoryBrush}}"/>
-                    <ui:SparklineControl Style="{StaticResource Sparkline}" Stroke="{StaticResource MemoryBrush}" RangeMax="100" Values="{Binding RamSeries}"/>
+                    <ui:SparklineControl Capacity="{Binding SeriesCapacity}" Origin="{Binding SeriesOrigin}" Style="{StaticResource Sparkline}" Stroke="{StaticResource MemoryBrush}" RangeMax="100" Values="{Binding RamSeries}"/>
                     <TextBlock Text="{Binding RamDetail}" Style="{StaticResource Detail}"/>
                 </StackPanel>
             </Border>
@@ -436,7 +436,7 @@
                     </Grid>
                     <ProgressBar Style="{StaticResource Meter}" Value="{Binding GpuPercent, Mode=OneWay}"
                                  Foreground="{Binding GpuLevel, Converter={StaticResource LevelBrush}, ConverterParameter={StaticResource GpuBrush}}"/>
-                    <ui:SparklineControl Style="{StaticResource Sparkline}" Stroke="{StaticResource GpuBrush}" RangeMax="100" Values="{Binding GpuSeries}"/>
+                    <ui:SparklineControl Capacity="{Binding SeriesCapacity}" Origin="{Binding SeriesOrigin}" Style="{StaticResource Sparkline}" Stroke="{StaticResource GpuBrush}" RangeMax="100" Values="{Binding GpuSeries}"/>
                     <TextBlock Text="{Binding GpuDetail}" Style="{StaticResource Detail}"/>
                 </StackPanel>
             </Border>
@@ -456,7 +456,7 @@
                     </Grid>
                     <ProgressBar Style="{StaticResource Meter}" Value="{Binding DiskPercent, Mode=OneWay}"
                                  Foreground="{Binding DiskLevel, Converter={StaticResource LevelBrush}, ConverterParameter={StaticResource DiskBrush}}"/>
-                    <ui:SparklineControl Style="{StaticResource Sparkline}" Stroke="{StaticResource DiskBrush}" Values="{Binding DiskSeries}" ToolTip="Read + write throughput"/>
+                    <ui:SparklineControl Capacity="{Binding SeriesCapacity}" Origin="{Binding SeriesOrigin}" Style="{StaticResource Sparkline}" Stroke="{StaticResource DiskBrush}" Values="{Binding DiskSeries}" ToolTip="Read + write throughput"/>
                     <TextBlock Text="{Binding DiskDetail}" Style="{StaticResource Detail}"/>
                 </StackPanel>
             </Border>
@@ -471,7 +471,7 @@
                         </StackPanel>
                         <TextBlock Text="{Binding NetValue}" Style="{StaticResource Value}"/>
                     </Grid>
-                    <ui:SparklineControl Style="{StaticResource Sparkline}" Stroke="{StaticResource NetworkBrush}" Values="{Binding NetSeries}" ToolTip="Download throughput"/>
+                    <ui:SparklineControl Capacity="{Binding SeriesCapacity}" Origin="{Binding SeriesOrigin}" Style="{StaticResource Sparkline}" Stroke="{StaticResource NetworkBrush}" Values="{Binding NetSeries}" ToolTip="Download throughput"/>
                     <TextBlock Text="{Binding NetDetail}" Style="{StaticResource Detail}"/>
                 </StackPanel>
             </Border>
@@ -497,7 +497,7 @@
                                 <TextBlock Text="{Binding FocusLevel}" FontSize="11" FontWeight="SemiBold" Foreground="{Binding FocusLevel, Converter={StaticResource LevelBrush}}"/>
                             </Border>
                         </StackPanel>
-                        <ui:SparklineControl Height="88" Margin="0,12,0,0" Stroke="{Binding FocusStroke}" RangeMax="{Binding FocusRangeMax}" Values="{Binding FocusSeries}"/>
+                        <ui:SparklineControl Capacity="{Binding SeriesCapacity}" Origin="{Binding SeriesOrigin}" Height="88" Margin="0,12,0,0" Stroke="{Binding FocusStroke}" RangeMax="{Binding FocusRangeMax}" Values="{Binding FocusSeries}"/>
                         <TextBlock Text="{Binding ChartCaption}" FontSize="12" Foreground="{StaticResource TextMutedBrush}" Margin="0,6,0,0" Visibility="{Binding ShowingCaption, Converter={StaticResource Show}}"/>
                     </StackPanel>
                 </Border>

@@ -24,6 +24,7 @@ internal sealed class SystemSampler : IDisposable
     private NetworkInterface? _adapter;
     private DateTime _adapterCheckedAt;
     private Snapshot? _latest;
+    private long _published;
 
     public event EventHandler<Snapshot>? Updated;
 
@@ -38,10 +39,12 @@ internal sealed class SystemSampler : IDisposable
         }
     }
 
-    public Snapshot[] CopyHistory()
+    // firstSequence is the running sample number of history[0]; it keeps counting after old samples drop off.
+    public Snapshot[] CopyHistory(out long firstSequence)
     {
         lock (_gate)
         {
+            firstSequence = _published - _history.Count;
             return _history.ToArray();
         }
     }
@@ -174,6 +177,7 @@ internal sealed class SystemSampler : IDisposable
         lock (_gate)
         {
             _latest = snapshot;
+            _published++;
             _history.Add(snapshot);
             if (_history.Count > HistoryLimit)
             {
