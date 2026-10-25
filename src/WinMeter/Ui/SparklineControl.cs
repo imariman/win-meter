@@ -25,6 +25,18 @@ public class SparklineControl : FrameworkElement
         typeof(SparklineControl),
         new FrameworkPropertyMetadata(0d, FrameworkPropertyMetadataOptions.AffectsRender));
 
+    public static readonly DependencyProperty CapacityProperty = DependencyProperty.Register(
+        nameof(Capacity),
+        typeof(int),
+        typeof(SparklineControl),
+        new FrameworkPropertyMetadata(0, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    public static readonly DependencyProperty OriginProperty = DependencyProperty.Register(
+        nameof(Origin),
+        typeof(long),
+        typeof(SparklineControl),
+        new FrameworkPropertyMetadata(0L, FrameworkPropertyMetadataOptions.AffectsRender));
+
     public IReadOnlyList<double>? Values
     {
         get => (IReadOnlyList<double>?)GetValue(ValuesProperty);
@@ -41,6 +53,20 @@ public class SparklineControl : FrameworkElement
     {
         get => (double)GetValue(RangeMaxProperty);
         set => SetValue(RangeMaxProperty, value);
+    }
+
+    // Number of samples the full width stands for. Fewer samples are drawn against the right edge.
+    public int Capacity
+    {
+        get => (int)GetValue(CapacityProperty);
+        set => SetValue(CapacityProperty, value);
+    }
+
+    // Running sample number of Values[0]; keeps thinned points steady while the chart scrolls.
+    public long Origin
+    {
+        get => (long)GetValue(OriginProperty);
+        set => SetValue(OriginProperty, value);
     }
 
     protected override void OnRender(DrawingContext context)
@@ -74,60 +100,45 @@ public class SparklineControl : FrameworkElement
             }
         }
 
-        var line = new StreamGeometry();
-        var fill = new StreamGeometry();
-        using (var lineContext = line.Open())
-        using (var fillContext = fill.Open())
+        var points = SparklinePlot.Points(values, Capacity, Origin, width);
+        var plotted = new Point[points.Count];
+        for (var i = 0; i < points.Count; i++)
         {
-            var started = false;
-            var first = new Point();
-            var last = new Point();
-            for (var i = 0; i < values.Count; i++)
-            {
-                var x = values.Count == 1 ? 0 : i * (width / (values.Count - 1));
-                var clamped = Math.Clamp(values[i], 0, max);
-                var y = height - 1 - (clamped / max) * (height - 2);
-                var point = new Point(x, y);
-                if (!started)
-                {
-                    first = point;
-                    last = point;
-                    lineContext.BeginFigure(point, false, false);
-                    fillContext.BeginFigure(new Point(point.X, height - 1), true, true);
-                    fillContext.LineTo(point, true, false);
-                    started = true;
-                }
-                else
-                {
-                    lineContext.LineTo(point, true, true);
-                    fillContext.LineTo(point, true, false);
-                    last = point;
-                }
-            }
-
-            if (values.Count == 1)
-            {
-                var end = new Point(width, first.Y);
-                lineContext.LineTo(end, true, true);
-                fillContext.LineTo(end, true, false);
-                last = end;
-            }
-
-            fillContext.LineTo(new Point(last.X, height - 1), true, false);
+            var clamped = Math.Clamp(points[i].Value, 0, max);
+            plotted[i] = new Point(points[i].X, height - 1 - (clamped / max) * (height - 2));
         }
 
-        line.Freeze();
-        fill.Freeze();
-        context.DrawGeometry(FillBrush(), null, fill);
-        context.DrawGeometry(null, new Pen(Stroke, 1.5)
+        if (plotted.Length > 1)
         {
-            StartLineCap = PenLineCap.Round,
-            EndLineCap = PenLineCap.Round,
-            LineJoin = PenLineJoin.Round
-        }, line);
+            var line = new StreamGeometry();
+            var fill = new StreamGeometry();
+            using (var lineContext = line.Open())
+            using (var fillContext = fill.Open())
+            {
+                lineContext.BeginFigure(plotted[0], false, false);
+                fillContext.BeginFigure(new Point(plotted[0].X, height - 1), true, true);
+                fillContext.LineTo(plotted[0], true, false);
+                for (var i = 1; i < plotted.Length; i++)
+                {
+                    lineContext.LineTo(plotted[i], true, true);
+                    fillContext.LineTo(plotted[i], true, false);
+                }
 
-        var lastValue = Math.Clamp(values[values.Count - 1], 0, max);
-        var marker = new Point(width, height - 1 - (lastValue / max) * (height - 2));
+                fillContext.LineTo(new Point(plotted[^1].X, height - 1), true, false);
+            }
+
+            line.Freeze();
+            fill.Freeze();
+            context.DrawGeometry(FillBrush(), null, fill);
+            context.DrawGeometry(null, new Pen(Stroke, 1.5)
+            {
+                StartLineCap = PenLineCap.Round,
+                EndLineCap = PenLineCap.Round,
+                LineJoin = PenLineJoin.Round
+            }, line);
+        }
+
+        var marker = plotted[^1];
         var halo = Stroke.Clone();
         halo.Opacity = 0.25;
         context.DrawEllipse(halo, null, marker, 5, 5);

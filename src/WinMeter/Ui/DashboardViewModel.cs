@@ -93,6 +93,8 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
     private IReadOnlyList<CoreLoad> _cores = Array.Empty<CoreLoad>();
     private Snapshot? _latest;
     private IReadOnlyList<Snapshot> _history = Array.Empty<Snapshot>();
+    private long _firstSequence;
+    private long _seriesOrigin;
     private MeterKind? _focus;
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -137,13 +139,28 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
     public string PcGraphics => _machine.Graphics;
     public string PcWindows => _machine.Windows;
     public string PcMemory => _memoryTotal;
-    public string RangeLabel => _historySeconds switch
+    public string RangeLabel
     {
-        600 => "Last 10 minutes",
-        3600 => "Last hour",
-        _ => "Last minute"
-    };
+        get
+        {
+            var label = _historySeconds switch
+            {
+                600 => "Last 10 minutes",
+                3600 => "Last hour",
+                _ => "Last minute"
+            };
+            var collected = _history.Count;
+            if (collected == 0)
+            {
+                return label + " · collecting";
+            }
+
+            return collected < _historySeconds ? label + " · " + Duration(collected) + " so far" : label;
+        }
+    }
     public int RangeSeconds => _historySeconds;
+    public int SeriesCapacity => _historySeconds;
+    public long SeriesOrigin => _seriesOrigin;
     public bool StripCpu
     {
         get => StripPreferences.Shows(MeterKind.Cpu);
@@ -184,11 +201,14 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
     public bool ShowingCores => _focus == MeterKind.Cpu && _cores.Count > 0;
     public bool ShowingCaption => _chartCaption.Length > 0;
 
-    public void Apply(Snapshot latest, IReadOnlyList<Snapshot> history)
+    public void Apply(Snapshot latest, IReadOnlyList<Snapshot> history, long firstSequence)
     {
         _latest = latest;
         _history = history;
+        _firstSequence = firstSequence;
         var window = Window();
+        Set(ref _seriesOrigin, firstSequence + history.Count - window.Length, nameof(SeriesOrigin));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RangeLabel)));
         var cpu = new double[window.Length];
         var ram = new double[window.Length];
         var disk = new double[window.Length];
@@ -243,9 +263,10 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
         _historySeconds = seconds;
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RangeLabel)));
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RangeSeconds)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SeriesCapacity)));
         if (_latest != null)
         {
-            Apply(_latest, _history);
+            Apply(_latest, _history, _firstSequence);
         }
     }
 
@@ -396,6 +417,13 @@ public sealed class DashboardViewModel : INotifyPropertyChanged
         }
 
         return series;
+    }
+
+    private static string Duration(int seconds)
+    {
+        return seconds < 60
+            ? seconds.ToString(System.Globalization.CultureInfo.CurrentCulture) + " s"
+            : (seconds / 60).ToString(System.Globalization.CultureInfo.CurrentCulture) + " min";
     }
 
     private static int Busiest(double[] cores)

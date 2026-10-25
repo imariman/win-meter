@@ -85,7 +85,8 @@ internal sealed class TrayController : IDisposable
                 return;
             }
 
-            _model.Apply(snapshot, _sampler.CopyHistory());
+            var history = _sampler.CopyHistory(out var firstSequence);
+            _model.Apply(snapshot, history, firstSequence);
             _strip.Apply(snapshot);
         }));
     }
