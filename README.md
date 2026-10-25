@@ -1,6 +1,8 @@
 # WinMeter
 
-CPU, memory, disk, and network in the Windows notification area. Left-click opens the panel. The right-click menu starts WinMeter with Windows or quits.
+<img src="assets/winmeter-logo.jpg" alt="WinMeter" width="96">
+
+CPU, memory, GPU, disk, and network on the Windows taskbar. Click the logo for the home screen. Click a reading for its detail.
 
 No administrator rights. This version does not read temperatures. Readings stay on the machine.
 
