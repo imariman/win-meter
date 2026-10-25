@@ -2,7 +2,9 @@ using System;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Controls;
 using System.Windows.Interop;
+using System.Windows.Media;
 using WinMeter.Metrics;
 
 namespace WinMeter.Ui;
@@ -19,6 +21,10 @@ public partial class TaskbarStrip : Window
     private const uint NoActivate = 0x0010;
 
     private delegate IntPtr WndProcDelegate(IntPtr window, int message, IntPtr wParam, IntPtr lParam);
+
+    private static readonly Brush NormalValue = Frozen(Color.FromRgb(0xF8, 0xFA, 0xFC));
+    private static readonly Brush HighValue = Frozen(Color.FromRgb(0xFB, 0xBF, 0x24));
+    private static readonly Brush CriticalValue = Frozen(Color.FromRgb(0xF8, 0x71, 0x71));
 
     private WndProcDelegate? _wndProc;
     private IntPtr _previousProc;
@@ -40,6 +46,10 @@ public partial class TaskbarStrip : Window
         RamValue.Text = Format.Percent(snapshot.RamPercent);
         SsdValue.Text = Format.Percent(snapshot.DiskUsedPercent);
         GpuValue.Text = snapshot.GpuReady ? Format.Percent(snapshot.GpuPercent) : "—";
+        Paint(CpuValue, snapshot.CpuPercent);
+        Paint(RamValue, snapshot.RamPercent);
+        Paint(SsdValue, snapshot.DiskUsedPercent);
+        Paint(GpuValue, snapshot.GpuReady ? snapshot.GpuPercent : 0);
         NetValue.Text = Format.CompactRate(snapshot.NetDownBps);
         ApplyVisibility();
     }
@@ -53,6 +63,23 @@ public partial class TaskbarStrip : Window
         NetHit.Visibility = Shown(MeterKind.Network);
         UpdateLayout();
         Place();
+    }
+
+    private static void Paint(TextBlock value, double percent)
+    {
+        value.Foreground = LoadLevel.For(percent) switch
+        {
+            LoadLevel.Critical => CriticalValue,
+            LoadLevel.High => HighValue,
+            _ => NormalValue
+        };
+    }
+
+    private static Brush Frozen(Color color)
+    {
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+        return brush;
     }
 
     private static Visibility Shown(MeterKind kind)
