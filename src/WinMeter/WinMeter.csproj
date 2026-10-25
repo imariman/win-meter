@@ -10,7 +10,7 @@
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <AssemblyName>WinMeter</AssemblyName>
     <RootNamespace>WinMeter</RootNamespace>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <Product>WinMeter</Product>
     <Description>Windows tray system monitor</Description>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
