@@ -5,3 +5,10 @@ obj/
 *.suo
 TestResults/
 artifacts/
+node_modules/
+dist/
+.website-template/
+.ui-ux-pro-max-tmp/
+.home/
+.latest-release.json
+.repository.json
