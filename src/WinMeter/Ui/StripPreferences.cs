@@ -17,7 +17,7 @@ internal static class StripPreferences
             return number != 0;
         }
 
-        return kind is MeterKind.Cpu or MeterKind.Memory;
+        return kind is MeterKind.Cpu or MeterKind.Memory or MeterKind.Battery or MeterKind.Temperature;
     }
 
     public static void Set(MeterKind kind, bool shown)

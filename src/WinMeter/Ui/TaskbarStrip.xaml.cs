@@ -29,6 +29,8 @@ public partial class TaskbarStrip : Window
     private WndProcDelegate? _wndProc;
     private IntPtr _previousProc;
 
+    private Snapshot? _shown;
+
     public event EventHandler? OpenRequested;
 
     public event EventHandler<MeterKind>? MeterRequested;
@@ -42,6 +44,7 @@ public partial class TaskbarStrip : Window
 
     public void Apply(Snapshot snapshot)
     {
+        _shown = snapshot;
         CpuValue.Text = Format.Percent(snapshot.CpuPercent);
         RamValue.Text = Format.Percent(snapshot.RamPercent);
         SsdValue.Text = Format.Percent(snapshot.DiskUsedPercent);
@@ -51,6 +54,18 @@ public partial class TaskbarStrip : Window
         Paint(SsdValue, snapshot.DiskUsedPercent);
         Paint(GpuValue, snapshot.GpuReady ? snapshot.GpuPercent : 0);
         NetValue.Text = Format.CompactRate(snapshot.NetDownBps);
+        if (snapshot.BatteryPresent)
+        {
+            BatValue.Text = Format.Percent(snapshot.BatteryPercent);
+            PaintBattery(BatValue, snapshot.BatteryPercent, snapshot.BatteryCharging);
+        }
+
+        if (snapshot.TempReady)
+        {
+            TmpValue.Text = Format.Degrees(snapshot.TempCelsius);
+            Paint(TmpValue, snapshot.TempCelsius);
+        }
+
         ApplyVisibility();
     }
 
@@ -61,6 +76,8 @@ public partial class TaskbarStrip : Window
         GpuHit.Visibility = Shown(MeterKind.Gpu);
         SsdHit.Visibility = Shown(MeterKind.Disk);
         NetHit.Visibility = Shown(MeterKind.Network);
+        BatHit.Visibility = _shown?.BatteryPresent == true && StripPreferences.Shows(MeterKind.Battery) ? Visibility.Visible : Visibility.Collapsed;
+        TmpHit.Visibility = _shown?.TempReady == true && StripPreferences.Shows(MeterKind.Temperature) ? Visibility.Visible : Visibility.Collapsed;
         UpdateLayout();
         Place();
     }
@@ -68,6 +85,16 @@ public partial class TaskbarStrip : Window
     private static void Paint(TextBlock value, double percent)
     {
         value.Foreground = LoadLevel.For(percent) switch
+        {
+            LoadLevel.Critical => CriticalValue,
+            LoadLevel.High => HighValue,
+            _ => NormalValue
+        };
+    }
+
+    private static void PaintBattery(TextBlock value, double percent, bool charging)
+    {
+        value.Foreground = LoadLevel.ForBattery(percent, charging) switch
         {
             LoadLevel.Critical => CriticalValue,
             LoadLevel.High => HighValue,
@@ -175,6 +202,8 @@ public partial class TaskbarStrip : Window
         SsdHighlight.Opacity = kind == MeterKind.Disk ? 1 : 0;
         GpuHighlight.Opacity = kind == MeterKind.Gpu ? 1 : 0;
         NetHighlight.Opacity = kind == MeterKind.Network ? 1 : 0;
+        BatHighlight.Opacity = kind == MeterKind.Battery ? 1 : 0;
+        TmpHighlight.Opacity = kind == MeterKind.Temperature ? 1 : 0;
     }
 
     private void Logo_Click(object sender, MouseButtonEventArgs e)

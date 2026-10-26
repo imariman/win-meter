@@ -19,6 +19,11 @@ internal sealed class SystemSampler : IDisposable
     private readonly List<Snapshot> _history = new();
     private readonly PdhReader _disk = new();
     private readonly GpuUsage _gpu = new();
+    private readonly GpuMemory _gpuMemory = new();
+    private readonly CpuClock _clock = new();
+    private readonly ThermalReader _thermal = new();
+    private readonly WifiSignal _wifi = new();
+    private readonly ProcessList _processes = new();
     private readonly CancellationTokenSource _cancel = new();
     private Task? _loop;
     private NetworkInterface? _adapter;
@@ -64,6 +69,9 @@ internal sealed class SystemSampler : IDisposable
         try
         {
             _gpu.Collect();
+            _gpuMemory.Collect();
+            _clock.Collect();
+            _thermal.Collect();
         }
         catch (Exception ex)
         {
@@ -86,6 +94,11 @@ internal sealed class SystemSampler : IDisposable
 
         _disk.Dispose();
         _gpu.Dispose();
+        _gpuMemory.Dispose();
+        _clock.Dispose();
+        _thermal.Dispose();
+        _wifi.Dispose();
+        _processes.Dispose();
         _cancel.Dispose();
     }
 
@@ -95,6 +108,7 @@ internal sealed class SystemSampler : IDisposable
         NetPoint? previousNet = ReadNet();
         CoreTimes[]? previousCores = ReadCoreTimes();
         var previousAt = DateTime.UtcNow;
+        _processes.Sample(0, Environment.ProcessorCount);
 
         while (!_cancel.IsCancellationRequested)
         {
@@ -121,6 +135,7 @@ internal sealed class SystemSampler : IDisposable
                 previousCores = coreTimes;
                 TryCollectDisk();
                 TryCollectGpu();
+                _processes.Sample(0, Environment.ProcessorCount);
                 continue;
             }
 
@@ -143,6 +158,28 @@ internal sealed class SystemSampler : IDisposable
             var diskIo = ReadDiskIo();
             var memory = ReadMemory();
             var disk = ReadDisk();
+            var adapters = ReadAdapters();
+            var gpuPercent = 0d;
+            foreach (var adapter in adapters)
+            {
+                if (adapter.Percent > gpuPercent)
+                {
+                    gpuPercent = adapter.Percent;
+                }
+            }
+
+            var gpuReady = adapters.Length > 0 || _gpu.HasEngines;
+            if (adapters.Length == 0 && _gpu.HasEngines)
+            {
+                gpuPercent = ReadGpu();
+            }
+
+            _clock.Collect();
+            var zones = ReadZones();
+            var battery = BatteryReader.Read();
+            var wifi = _wifi.Read(_adapter);
+            var processes = _processes.Sample(elapsed, Environment.ProcessorCount);
+            var volumes = ReadVolumes();
             var snapshot = new Snapshot(
                 cpuPercent,
                 memory.Percent,
@@ -162,8 +199,24 @@ internal sealed class SystemSampler : IDisposable
                 memory.CommitUsed,
                 memory.CommitLimit,
                 disk.TotalBytes,
-                _gpu.HasEngines,
-                ReadGpu());
+                gpuReady,
+                gpuPercent,
+                _clock.CurrentMhz,
+                battery.Present,
+                battery.Percent,
+                battery.Charging,
+                battery.OnAc,
+                battery.SecondsRemaining,
+                zones.Length > 0,
+                zones.Length > 0 ? zones[0].Celsius : 0,
+                zones.Length > 0 ? zones[0].Name : "",
+                zones,
+                adapters,
+                volumes,
+                wifi.Signal,
+                wifi.Ssid,
+                processes.Cpu,
+                processes.Memory);
 
             previousCpu = cpu;
             previousNet = net;
@@ -174,11 +227,19 @@ internal sealed class SystemSampler : IDisposable
 
     private void Publish(Snapshot snapshot)
     {
+        var archived = snapshot with
+        {
+            Zones = Array.Empty<ThermalZone>(),
+            Adapters = Array.Empty<GpuAdapter>(),
+            Volumes = Array.Empty<DiskVolume>(),
+            TopCpu = Array.Empty<ProcessLoad>(),
+            TopMemory = Array.Empty<ProcessLoad>()
+        };
         lock (_gate)
         {
             _latest = snapshot;
             _published++;
-            _history.Add(snapshot);
+            _history.Add(archived);
             if (_history.Count > HistoryLimit)
             {
                 _history.RemoveAt(0);
@@ -209,6 +270,84 @@ internal sealed class SystemSampler : IDisposable
         catch (Exception ex)
         {
             Debug.WriteLine(ex);
+        }
+    }
+
+    private GpuAdapter[] ReadAdapters()
+    {
+        try
+        {
+            _gpu.Collect();
+            _gpuMemory.Collect();
+            return GpuNames.Combine(_gpu.ReadAdapters(), _gpuMemory.Read(), GpuNames.Read());
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(ex);
+            return Array.Empty<GpuAdapter>();
+        }
+    }
+
+    private ThermalZone[] ReadZones()
+    {
+        try
+        {
+            var zones = _thermal.Read();
+            if (zones.Length > 1)
+            {
+                Array.Sort(zones, static (left, right) => right.Celsius.CompareTo(left.Celsius));
+            }
+
+            return zones;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(ex);
+            return Array.Empty<ThermalZone>();
+        }
+    }
+
+    private static DiskVolume[] ReadVolumes()
+    {
+        try
+        {
+            var volumes = new List<DiskVolume>();
+            foreach (var drive in DriveInfo.GetDrives())
+            {
+                try
+                {
+                    if (!drive.IsReady || drive.TotalSize <= 0)
+                    {
+                        continue;
+                    }
+
+                    if (drive.DriveType is not (DriveType.Fixed or DriveType.Removable))
+                    {
+                        continue;
+                    }
+
+                    var free = drive.AvailableFreeSpace;
+                    var usedPercent = Math.Clamp((1 - (free / (double)drive.TotalSize)) * 100, 0, 100);
+                    var name = drive.Name.TrimEnd('\\');
+                    if (!string.IsNullOrWhiteSpace(drive.VolumeLabel))
+                    {
+                        name += " " + drive.VolumeLabel;
+                    }
+
+                    volumes.Add(new DiskVolume(name, usedPercent, free, drive.TotalSize));
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine(ex);
+                }
+            }
+
+            return volumes.ToArray();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(ex);
+            return Array.Empty<DiskVolume>();
         }
     }
 

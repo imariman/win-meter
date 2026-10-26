@@ -20,4 +20,20 @@ internal static class LoadLevel
 
         return Normal;
     }
+
+    // Low charge is the warning. A charger clears it.
+    public static string ForBattery(double percent, bool charging)
+    {
+        if (charging || percent >= 30)
+        {
+            return Normal;
+        }
+
+        if (percent <= 15)
+        {
+            return Critical;
+        }
+
+        return High;
+    }
 }

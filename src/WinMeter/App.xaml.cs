@@ -79,12 +79,14 @@ public partial class App : Application
     {
         using var sampler = new SystemSampler();
         sampler.Start();
-        var deadline = DateTime.UtcNow.AddSeconds(4);
+        var started = DateTime.UtcNow;
+        var deadline = started.AddSeconds(4);
         Snapshot? sample = null;
         while (DateTime.UtcNow < deadline)
         {
             sample = sampler.Latest;
-            if (sample is { HasDelta: true, RamTotalBytes: > 0 })
+            if (DateTime.UtcNow - started > TimeSpan.FromSeconds(2.2)
+                && sample is { HasDelta: true, RamTotalBytes: > 0 })
             {
                 break;
             }
@@ -110,7 +112,15 @@ public partial class App : Application
             + " volume=" + sample.DiskName
             + " cores=" + sample.CorePercents.Length
             + " gpu=" + sample.GpuPercent.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)
-            + " gpuReady=" + sample.GpuReady);
+            + " gpuReady=" + sample.GpuReady
+            + " mhz=" + sample.CpuMhz.ToString("0", System.Globalization.CultureInfo.InvariantCulture)
+            + " bat=" + (sample.BatteryPresent ? sample.BatteryPercent.ToString("0", System.Globalization.CultureInfo.InvariantCulture) : "none")
+            + " temp=" + (sample.TempReady ? sample.TempCelsius.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) : "none")
+            + " zones=" + sample.Zones.Length
+            + " gpus=" + sample.Adapters.Length
+            + " wifi=" + sample.WifiSignal
+            + " volumes=" + sample.Volumes.Length
+            + " top=" + (sample.TopCpu.Length == 0 ? "-" : sample.TopCpu[0].Name));
         return 0;
     }
 

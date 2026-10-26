@@ -36,9 +36,12 @@
         <SolidColorBrush x:Key="GpuBrush" Color="#F472B6"/>
         <SolidColorBrush x:Key="DiskBrush" Color="#2DD4BF"/>
         <SolidColorBrush x:Key="NetworkBrush" Color="#A78BFA"/>
+        <SolidColorBrush x:Key="BatteryBrush" Color="#FB923C"/>
+        <SolidColorBrush x:Key="TempBrush" Color="#FB7185"/>
 
         <BooleanToVisibilityConverter x:Key="Show"/>
         <ui:LevelBrushConverter x:Key="LevelBrush" High="{StaticResource WarningBrush}" Critical="{StaticResource CriticalBrush}"/>
+        <ui:LevelAccentConverter x:Key="LevelAccent" High="{StaticResource WarningBrush}" Critical="{StaticResource CriticalBrush}"/>
 
         <Style x:Key="Card" TargetType="Border">
             <Setter Property="Background" Value="{StaticResource CardBrush}"/>
@@ -331,7 +334,9 @@
                         <CheckBox Content="RAM" Tag="Memory" IsChecked="{Binding StripMemory, Mode=OneWay}" Foreground="{StaticResource MemoryBrush}" Style="{StaticResource Chip}" Click="Strip_Click"/>
                         <CheckBox Content="GPU" Tag="Gpu" IsChecked="{Binding StripGpu, Mode=OneWay}" Foreground="{StaticResource GpuBrush}" Style="{StaticResource Chip}" Click="Strip_Click"/>
                         <CheckBox Content="SSD" Tag="Disk" IsChecked="{Binding StripDisk, Mode=OneWay}" Foreground="{StaticResource DiskBrush}" Style="{StaticResource Chip}" Click="Strip_Click"/>
-                        <CheckBox Content="NET" Tag="Network" IsChecked="{Binding StripNetwork, Mode=OneWay}" Foreground="{StaticResource NetworkBrush}" Style="{StaticResource Chip}" Click="Strip_Click" Margin="0,0,0,6"/>
+                        <CheckBox Content="NET" Tag="Network" IsChecked="{Binding StripNetwork, Mode=OneWay}" Foreground="{StaticResource NetworkBrush}" Style="{StaticResource Chip}" Click="Strip_Click"/>
+                        <CheckBox Content="BAT" Tag="Battery" IsChecked="{Binding StripBattery, Mode=OneWay}" Foreground="{StaticResource BatteryBrush}" Style="{StaticResource Chip}" Click="Strip_Click" Visibility="{Binding HasBattery, Converter={StaticResource Show}}"/>
+                        <CheckBox Content="TMP" Tag="Temperature" IsChecked="{Binding StripTemperature, Mode=OneWay}" Foreground="{StaticResource TempBrush}" Style="{StaticResource Chip}" Click="Strip_Click" Visibility="{Binding HasTemperature, Converter={StaticResource Show}}" Margin="0,0,0,6"/>
                     </WrapPanel>
                 </StackPanel>
             </Border>
@@ -461,7 +466,7 @@
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource Card}" Margin="0" AutomationProperties.Name="{Binding NetValue, StringFormat=Network download {0}}">
+            <Border Style="{StaticResource Card}" AutomationProperties.Name="{Binding NetValue, StringFormat=Network download {0}}">
                 <StackPanel>
                     <Grid>
                         <StackPanel Orientation="Horizontal">
@@ -473,6 +478,46 @@
                     </Grid>
                     <ui:SparklineControl Capacity="{Binding SeriesCapacity}" Origin="{Binding SeriesOrigin}" Style="{StaticResource Sparkline}" Stroke="{StaticResource NetworkBrush}" Values="{Binding NetSeries}" ToolTip="Download throughput"/>
                     <TextBlock Text="{Binding NetDetail}" Style="{StaticResource Detail}"/>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}" Visibility="{Binding HasBattery, Converter={StaticResource Show}}" AutomationProperties.Name="{Binding BatteryValue, StringFormat=Battery {0}}">
+                <StackPanel>
+                    <Grid>
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Style="{StaticResource AccentDot}" Fill="{StaticResource BatteryBrush}"/>
+                            <TextBlock Text="Battery" Style="{StaticResource Title}"/>
+                            <Border Style="{StaticResource LevelPill}" Tag="{Binding BatteryLevel}" BorderBrush="{Binding BatteryLevel, Converter={StaticResource LevelBrush}}">
+                                <TextBlock Text="{Binding BatteryLevel}" FontSize="11" FontWeight="SemiBold" Foreground="{Binding BatteryLevel, Converter={StaticResource LevelBrush}}"/>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Text="{Binding BatteryValue}" Style="{StaticResource Value}"
+                                   Foreground="{Binding BatteryLevel, Converter={StaticResource LevelBrush}, ConverterParameter={StaticResource TextPrimaryBrush}}"/>
+                    </Grid>
+                    <ProgressBar Style="{StaticResource Meter}" Value="{Binding BatteryPercent, Mode=OneWay}"
+                                 Foreground="{Binding BatteryLevel, Converter={StaticResource LevelBrush}, ConverterParameter={StaticResource BatteryBrush}}"/>
+                    <ui:SparklineControl Capacity="{Binding SeriesCapacity}" Origin="{Binding SeriesOrigin}" Style="{StaticResource Sparkline}" Stroke="{StaticResource BatteryBrush}" RangeMax="100" Values="{Binding BatterySeries}"/>
+                    <TextBlock Text="{Binding BatteryDetail}" Style="{StaticResource Detail}"/>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}" Margin="0" Visibility="{Binding HasTemperature, Converter={StaticResource Show}}" AutomationProperties.Name="{Binding TempValue, StringFormat=Temperature {0}}">
+                <StackPanel>
+                    <Grid>
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Style="{StaticResource AccentDot}" Fill="{StaticResource TempBrush}"/>
+                            <TextBlock Text="Temperature" Style="{StaticResource Title}"/>
+                            <Border Style="{StaticResource LevelPill}" Tag="{Binding TempLevel}" BorderBrush="{Binding TempLevel, Converter={StaticResource LevelBrush}}">
+                                <TextBlock Text="{Binding TempLevel}" FontSize="11" FontWeight="SemiBold" Foreground="{Binding TempLevel, Converter={StaticResource LevelBrush}}"/>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Text="{Binding TempValue}" Style="{StaticResource Value}"
+                                   Foreground="{Binding TempLevel, Converter={StaticResource LevelBrush}, ConverterParameter={StaticResource TextPrimaryBrush}}"/>
+                    </Grid>
+                    <ProgressBar Style="{StaticResource Meter}" Value="{Binding TempPercent, Mode=OneWay}"
+                                 Foreground="{Binding TempLevel, Converter={StaticResource LevelBrush}, ConverterParameter={StaticResource TempBrush}}"/>
+                    <ui:SparklineControl Capacity="{Binding SeriesCapacity}" Origin="{Binding SeriesOrigin}" Style="{StaticResource Sparkline}" Stroke="{StaticResource TempBrush}" RangeMax="100" Values="{Binding TempSeries}"/>
+                    <TextBlock Text="{Binding TempDetail}" Style="{StaticResource Detail}"/>
                 </StackPanel>
             </Border>
             </StackPanel>
@@ -519,7 +564,7 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </Border>
-                <Border Style="{StaticResource Card}" Margin="0" Visibility="{Binding ShowingCores, Converter={StaticResource Show}}">
+                <Border Style="{StaticResource Card}" Visibility="{Binding ShowingCores, Converter={StaticResource Show}}">
                     <StackPanel>
                         <TextBlock Text="Cores" Style="{StaticResource Title}" Margin="0,0,0,10"/>
                         <ItemsControl ItemsSource="{Binding Cores}" Focusable="False">
@@ -535,6 +580,35 @@
                                         <ProgressBar Value="{Binding Percent, Mode=OneWay}" Style="{StaticResource CoreMeter}"
                                                      Foreground="{Binding Level, Converter={StaticResource LevelBrush}, ConverterParameter={StaticResource CpuBrush}}"/>
                                         <TextBlock Text="{Binding Text}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11" Typography.NumeralAlignment="Tabular"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="0" Visibility="{Binding ShowingBreakdown, Converter={StaticResource Show}}">
+                    <StackPanel>
+                        <TextBlock Text="{Binding BreakdownTitle}" Style="{StaticResource Title}" Margin="0,0,0,10"/>
+                        <ItemsControl ItemsSource="{Binding Breakdown}" Focusable="False">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="0,0,0,10">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding Label}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" TextTrimming="CharacterEllipsis" Margin="0,0,12,0"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding Text}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="12" Typography.NumeralAlignment="Tabular" HorizontalAlignment="Right"/>
+                                        </Grid>
+                                        <ProgressBar Value="{Binding Percent, Mode=OneWay}" Style="{StaticResource CoreMeter}" Margin="0,4,0,0">
+                                            <ProgressBar.Foreground>
+                                                <MultiBinding Converter="{StaticResource LevelAccent}">
+                                                    <Binding Path="Level"/>
+                                                    <Binding Path="DataContext.BreakdownBrush" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                                </MultiBinding>
+                                            </ProgressBar.Foreground>
+                                        </ProgressBar>
                                     </StackPanel>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
