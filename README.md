@@ -14,6 +14,7 @@ A tiny, portable system monitor that sits beside the clock. No installer, no adm
 ![.NET](https://img.shields.io/badge/.NET-10-512BD4?style=flat-square&logo=dotnet)
 [![License: MIT](https://img.shields.io/badge/license-MIT-A78BFA?style=flat-square)](LICENSE)
 
+[**Website**](https://imariman.github.io/win-meter/) ·
 [**Download**](https://github.com/imariman/win-meter/releases/latest/download/WinMeter.exe) ·
 [Features](#features) ·
 [Usage](#usage) ·
